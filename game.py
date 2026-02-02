@@ -8,12 +8,8 @@ from settings import (
     WIDTH, HEIGHT, MIN_WIDTH, MIN_HEIGHT, FPS, TITLE,
     DARK_GRAY, WHITE, GameState, DISPLAY_FLAGS, ScreenSize
 )
-from screens import MainMenu
-from strings import (
-    GAME_TITLE, GAME_SUBTITLE,
-    OPTIONS_TITLE, OPTIONS_SUBTITLE,
-    INSTRUCTION_ESC
-)
+from screens import MainMenu, GameScreen
+from strings import OPTIONS_TITLE, OPTIONS_SUBTITLE, INSTRUCTION_ESC
 
 
 class Game:
@@ -30,11 +26,14 @@ class Game:
         self.state: GameState = GameState.MENU
 
         self.menu: MainMenu = MainMenu(self.set_state)
+        self.game_screen: GameScreen = GameScreen(self.set_state)
 
         self.font: Font = pygame.font.Font(None, 48)
         self.small_font: Font = pygame.font.Font(None, 32)
 
     def set_state(self, new_state: GameState) -> None:
+        if new_state == GameState.GAME and self.state != GameState.GAME:
+            self.game_screen.reset()
         self.state = new_state
         if self.state == GameState.QUIT:
             self.running = False
@@ -50,6 +49,7 @@ class Game:
             self.screen_size = self.windowed_size
             self.screen = pygame.display.set_mode(self.screen_size, DISPLAY_FLAGS)
         self.menu.on_resize(self.screen_size)
+        self.game_screen.on_resize(self.screen_size)
 
     def _handle_resize(self, event: Event) -> None:
         new_width: int = max(event.w, MIN_WIDTH)
@@ -57,6 +57,7 @@ class Game:
         self.screen_size = (new_width, new_height)
         self.screen = pygame.display.set_mode(self.screen_size, DISPLAY_FLAGS)
         self.menu.on_resize(self.screen_size)
+        self.game_screen.on_resize(self.screen_size)
 
     def handle_events(self) -> None:
         for event in pygame.event.get():
@@ -75,20 +76,27 @@ class Game:
             if self.state == GameState.MENU:
                 self.menu.handle_event(event)
 
-            elif self.state in (GameState.GAME, GameState.OPTIONS):
+            elif self.state == GameState.GAME:
+                self.game_screen.handle_event(event)
+                if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and not self.fullscreen:
+                    self.set_state(GameState.MENU)
+
+            elif self.state == GameState.OPTIONS:
                 if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE and not self.fullscreen:
                     self.set_state(GameState.MENU)
 
     def update(self, dt: float) -> None:
         if self.state == GameState.MENU:
             self.menu.update(dt)
+        elif self.state == GameState.GAME:
+            self.game_screen.update(dt)
 
     def draw(self) -> None:
         if self.state == GameState.MENU:
             self.menu.draw(self.screen)
 
         elif self.state == GameState.GAME:
-            self._draw_placeholder(GAME_TITLE, GAME_SUBTITLE)
+            self.game_screen.draw(self.screen)
 
         elif self.state == GameState.OPTIONS:
             self._draw_placeholder(OPTIONS_TITLE, OPTIONS_SUBTITLE)
