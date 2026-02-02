@@ -6,59 +6,84 @@ from settings import Color, ScreenSize
 
 
 class Chaser(Sprite):
-    def __init__(self, x: int, y: int) -> None:
+    BASE_SPEED: float = 150.0
+    SPEED_BOOST_ON_HIT: float = 50.0
+    APPROACH_ON_HIT: int = 80
+
+    def __init__(self, x: int, ground_y: int) -> None:
         super().__init__()
-        self.width: int = 45
-        self.height: int = 65
-        self.speed: float = 180.0
+        self.width: int = 140
+        self.height: int = 95
 
         self.image: Surface = self._create_image()
-        self.rect: Rect = self.image.get_rect(center=(x, y))
+        self.rect: Rect = self.image.get_rect()
+
+        self.screen_size: ScreenSize = (800, 600)
+        self.ground_y: int = ground_y
+        self.base_offset: float = float(x)
+        self.speed: float = self.BASE_SPEED
+
+        self.rect.midbottom = (int(self.base_offset), ground_y)
 
         self.target_x: int = x
-        self.target_y: int = y
-        self.screen_size: ScreenSize = (800, 600)
-        self.ground_y: int = 500
+        self.player_x: int = 100
 
     def _create_image(self) -> Surface:
         surface: Surface = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
 
-        skin_color: Color = (180, 140, 100)
-        shorts_color: Color = (30, 30, 30)
+        body_color: Color = (80, 50, 30)
+        horn_color: Color = (200, 180, 150)
 
-        pygame.draw.circle(surface, skin_color, (self.width // 2, 14), 12)
-        pygame.draw.rect(surface, skin_color, (self.width // 2 - 10, 24, 20, 28))
-        pygame.draw.rect(surface, shorts_color, (self.width // 2 - 12, 46, 24, 14))
-        pygame.draw.rect(surface, skin_color, (self.width // 2 - 10, 60, 8, 5))
-        pygame.draw.rect(surface, skin_color, (self.width // 2 + 2, 60, 8, 5))
-        pygame.draw.rect(surface, skin_color, (self.width // 2 - 18, 26, 8, 6))
-        pygame.draw.rect(surface, skin_color, (self.width // 2 + 10, 26, 8, 6))
+        pygame.draw.ellipse(surface, body_color, (10, 25, 110, 55))
+        pygame.draw.circle(surface, body_color, (110, 45), 28)
+        pygame.draw.polygon(surface, horn_color, [(120, 25), (140, 8), (130, 30)])
+        pygame.draw.polygon(surface, horn_color, [(120, 65), (140, 82), (130, 60)])
+        pygame.draw.circle(surface, (0, 0, 0), (124, 40), 5)
+        pygame.draw.circle(surface, (255, 0, 0), (124, 40), 3)
+        pygame.draw.rect(surface, body_color, (16, 75, 12, 20))
+        pygame.draw.rect(surface, body_color, (40, 75, 12, 20))
+        pygame.draw.rect(surface, body_color, (70, 75, 12, 20))
+        pygame.draw.rect(surface, body_color, (94, 75, 12, 20))
+        pygame.draw.ellipse(surface, body_color, (0, 35, 25, 15))
 
         return surface
 
     def set_screen_size(self, size: ScreenSize) -> None:
         self.screen_size = size
-        self.ground_y = int(size[1] * 0.85)
 
-    def set_target(self, x: int, y: int) -> None:
-        self.target_x = x
-        self.target_y = y
+    def set_ground_y(self, ground_y: int) -> None:
+        self.ground_y = ground_y
+        self.rect.bottom = ground_y
+
+    def set_target(self, player_x: int, player_y: int) -> None:
+        self.player_x = player_x
+        self.target_x = player_x - 150
+
+    def on_player_hit(self) -> None:
+        self.speed += self.SPEED_BOOST_ON_HIT
+        self.base_offset += self.APPROACH_ON_HIT
+
+    def reset(self, start_x: int) -> None:
+        self.base_offset = float(start_x)
+        self.speed = self.BASE_SPEED
+        self.rect.midbottom = (int(self.base_offset), self.ground_y)
+
+    def has_caught_player(self, player_rect: Rect) -> bool:
+        return self.rect.colliderect(player_rect)
 
     def update(self, dt: float) -> None:
-        dx: float = self.target_x - self.rect.centerx
-        dy: float = self.target_y - self.rect.centery
+        target: float = float(self.target_x)
+        diff: float = target - self.base_offset
 
-        distance: float = (dx ** 2 + dy ** 2) ** 0.5
+        if diff > 0:
+            move: float = min(self.speed * dt, diff)
+            self.base_offset += move
+        elif diff < 0:
+            move = min(self.speed * 0.5 * dt, -diff)
+            self.base_offset -= move
 
-        if distance > 5:
-            dx = dx / distance * self.speed
-            dy = dy / distance * self.speed
+        max_x: float = float(self.player_x - 50)
+        if self.base_offset > max_x:
+            self.base_offset = max_x
 
-            self.rect.x += int(dx * dt)
-            self.rect.y += int(dy * dt)
-
-        margin: int = 0
-        self.rect.left = max(margin, self.rect.left)
-        self.rect.right = min(self.screen_size[0] - margin, self.rect.right)
-        self.rect.top = max(self.ground_y - 100, self.rect.top)
-        self.rect.bottom = min(self.ground_y, self.rect.bottom)
+        self.rect.midbottom = (int(self.base_offset), self.ground_y)
