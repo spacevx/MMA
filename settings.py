@@ -1,15 +1,22 @@
 from enum import Enum, auto
 from typing import Final
 
+import pygame
+
 from strings import WINDOW_TITLE
 
 WIDTH: Final[int] = 800
 HEIGHT: Final[int] = 600
+MIN_WIDTH: Final[int] = 640
+MIN_HEIGHT: Final[int] = 480
 FPS: Final[int] = 60
 
 TITLE: Final[str] = WINDOW_TITLE
 
+DISPLAY_FLAGS: Final[int] = pygame.RESIZABLE
+
 Color = tuple[int, int, int]
+ScreenSize = tuple[int, int]
 
 BLACK: Final[Color] = (0, 0, 0)
 WHITE: Final[Color] = (255, 255, 255)
