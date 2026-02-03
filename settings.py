@@ -13,7 +13,7 @@ fps: Final[int] = 60
 
 title: Final[str] = windowTitle
 
-displayFlags: Final[int] = 0
+displayFlags: Final[int] = pygame.RESIZABLE
 
 Color = tuple[int, int, int]
 ScreenSize = tuple[int, int]

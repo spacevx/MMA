@@ -25,8 +25,6 @@ class DiscordRPC:
         self._connect()
 
     def _connect(self) -> None:
-        if clientId == "YOUR_CLIENT_ID_HERE":
-            return
         try:
             self.rpc = Presence(clientId)
             self.rpc.connect()

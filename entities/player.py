@@ -8,6 +8,7 @@ from entities.animation import AnimatedSprite, AnimationFrame, loadFrames
 from paths import assetsPath
 
 runningFramesPath = assetsPath / "player" / "running" / "frames"
+slidingFramesPath = assetsPath / "player" / "sliding" / "frames"
 
 class PlayerState(Enum):
     RUNNING = auto()
@@ -19,20 +20,29 @@ class Player(AnimatedSprite):
     jumpForce: float = -600.0
     slideDuration: float = 0.5
     playerScale: float = 0.15
+    slideScaleMult: float = 2.0
 
     def __init__(self, x: int, groundY: int) -> None:
         runningFrames = loadFrames(runningFramesPath, scale=self.playerScale)[116:132]
+        self.runningHeight: int = runningFrames[0].surface.get_height()
+        slidingTargetHeight = int(self.runningHeight * self.slideScaleMult)
+        slidingFrames = loadFrames(slidingFramesPath, targetHeight=slidingTargetHeight)
+        self.slidingHeight: int = slidingFrames[0].surface.get_height()
+        self.slideYOffset: int = (self.slidingHeight - self.runningHeight) // 2
         super().__init__(x, groundY, runningFrames)
 
         self.runningFrames: list[AnimationFrame] = runningFrames
+        self.slidingFrames: list[AnimationFrame] = slidingFrames
         self.groundY: int = groundY
         self.velocity: Vector2 = Vector2(0, 0)
         self.state: PlayerState = PlayerState.RUNNING
         self.slideTimer: float = 0.0
         self.bOnGround: bool = True
 
-    def _getSlideImage(self) -> Surface:
-        return pygame.transform.rotate(self._getFrame(), 90)
+    def _setFrames(self, frames: list[AnimationFrame]) -> None:
+        self.frames = frames
+        self.frameIdx = 0
+        self.animTimer = 0.0
 
     def setGroundY(self, groundY: int) -> None:
         self.groundY = groundY
@@ -58,22 +68,18 @@ class Player(AnimatedSprite):
         if self.bOnGround and self.state == PlayerState.RUNNING:
             self.state = PlayerState.SLIDING
             self.slideTimer = self.slideDuration
-            oldBottom = self.rect.bottom
             oldCenterx = self.rect.centerx
-            self.image = self._getSlideImage()
-            self.rect = self.image.get_rect()
-            self.rect.bottom = oldBottom
-            self.rect.centerx = oldCenterx
+            self._setFrames(self.slidingFrames)
+            self.image = self._getFrame()
+            self.rect = self.image.get_rect(centerx=oldCenterx, bottom=self.groundY + self.slideYOffset)
 
     def _endSlide(self) -> None:
         if self.state == PlayerState.SLIDING:
             self.state = PlayerState.RUNNING
-            oldBottom = self.rect.bottom
             oldCenterx = self.rect.centerx
+            self._setFrames(self.runningFrames)
             self.image = self._getFrame()
-            self.rect = self.image.get_rect()
-            self.rect.bottom = oldBottom
-            self.rect.centerx = oldCenterx
+            self.rect = self.image.get_rect(centerx=oldCenterx, bottom=self.groundY)
 
     def getHitbox(self) -> Rect:
         if self.state == PlayerState.SLIDING:
@@ -81,10 +87,7 @@ class Player(AnimatedSprite):
         return self.rect.inflate(-10, -10)
 
     def _updateImage(self) -> None:
-        if self.state == PlayerState.SLIDING:
-            self.image = self._getSlideImage()
-        else:
-            self.image = self._getFrame()
+        self.image = self._getFrame()
 
     def update(self, dt: float) -> None:
         if self.updateAnimation(dt):
