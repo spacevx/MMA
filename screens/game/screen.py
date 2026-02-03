@@ -56,6 +56,11 @@ class GameScreen:
         self.invincibleTimer: float = 0.0
         self.invincibleDuration: float = 1.0
 
+        self.bPlayerTrapped: bool = False
+        self.trappedTimer: float = 0.0
+        self.trappedDuration: float = 4.0
+        self.trappingCage: FallingCage | None = None
+
         self._initTilemap()
         self._initCeilingTilemap()
 
@@ -140,6 +145,10 @@ class GameScreen:
         self.bGameOver = False
         self.invincibleTimer = 0.0
 
+        self.bPlayerTrapped = False
+        self.trappedTimer = 0.0
+        self.trappingCage = None
+
         self.spawner.reset()
 
     def handleEvent(self, event: Event) -> None:
@@ -153,6 +162,10 @@ class GameScreen:
 
     def update(self, dt: float) -> None:
         if self.bGameOver:
+            return
+
+        if self.bPlayerTrapped:
+            self._updateTrapped(dt)
             return
 
         scrollDelta = self.scrollSpeed * dt
@@ -182,16 +195,33 @@ class GameScreen:
 
         self._handleCollisions()
 
+    def _updateTrapped(self, dt: float) -> None:
+        self.trappedTimer -= dt
+        if self.trappingCage:
+            self.trappingCage.update(dt)
+            self.localPlayer.rect.centerx = self.trappingCage.rect.centerx
+            self.localPlayer.rect.bottom = self.groundY
+        if self.trappedTimer <= 0:
+            self.bGameOver = True
+            pygame.time.set_timer(obstacleSpawnEvent, 0)
+
     def _handleCollisions(self) -> None:
         bInvincible = self.invincibleTimer > 0
         result = self.collisionSystem.check(
             self.localPlayer, self.chaser, self.obstacles, self.fallingCages, bInvincible
         )
 
-        if result.bHitObstacle or result.bHitCage:
+        if result.bHitObstacle:
             self.invincibleTimer = self.invincibleDuration
             if self.chaser:
                 self.chaser.onPlayerHit()
+
+        if result.bHitCage and result.trappingCage:
+            self.bPlayerTrapped = True
+            self.trappedTimer = self.trappedDuration
+            self.trappingCage = result.trappingCage
+            self.trappingCage.trapPlayer(self.localPlayer.rect.centerx)
+            pygame.time.set_timer(obstacleSpawnEvent, 0)
 
         if result.bCaught:
             self.bGameOver = True
@@ -202,8 +232,11 @@ class GameScreen:
         self.groundTilemap.draw(screen)
         self.obstacles.draw(screen)
 
-        if not (self.invincibleTimer > 0 and int(self.invincibleTimer * 10) % 2 == 0):
+        if self.bPlayerTrapped and self.trappingCage:
             screen.blit(self.localPlayer.image, self.localPlayer.rect)
+        else:
+            if not (self.invincibleTimer > 0 and int(self.invincibleTimer * 10) % 2 == 0):
+                screen.blit(self.localPlayer.image, self.localPlayer.rect)
 
         if self.chaser:
             screen.blit(self.chaser.image, self.chaser.rect)

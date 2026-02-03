@@ -11,6 +11,7 @@ class CollisionResult:
     bHitObstacle: bool = False
     bHitCage: bool = False
     bCaught: bool = False
+    trappingCage: FallingCage | None = None
 
 
 class CollisionSystem:
@@ -54,7 +55,7 @@ class CollisionSystem:
             return False
 
         if player.state == PlayerState.SLIDING:
-            if playerHitbox.top > cageHitbox.bottom - self._s(30):
+            if playerHitbox.top > cageHitbox.bottom - self._s(50):
                 return False
 
         return True
@@ -82,7 +83,7 @@ class CollisionSystem:
 
         if hitCages:
             result.bHitCage = True
-            hitCages[0].kill()
+            result.trappingCage = hitCages[0]
 
         if chaser and chaser.hasCaughtPlayer(player.getHitbox()):
             result.bCaught = True

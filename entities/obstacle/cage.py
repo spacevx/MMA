@@ -12,18 +12,19 @@ class CageState(Enum):
     WARNING = auto()
     FALLING = auto()
     GROUNDED = auto()
+    TRAPPED = auto()
 
 
 class FallingCage(BaseObstacle):
     _cageCache: Surface | None = None
     _chainCache: Surface | None = None
 
-    cageWidth: int = 160
-    cageHeight: int = 140
+    cageWidth: int = 180
+    cageHeight: int = 220
     chainWidth: int = 8
     fallSpeed: float = 1200.0
     warningDuration: float = 0.6
-    triggerDistance: float = 600.0
+    triggerDistance: float = 500.0
     groundedDuration: float = 0.8
 
     def __init__(self, x: int, ceilingY: int, groundY: int, scrollSpeed: float = 400.0) -> None:
@@ -114,10 +115,24 @@ class FallingCage(BaseObstacle):
             self.state = CageState.WARNING
             self.warningTimer = self.warningDuration
 
+    def trapPlayer(self, playerX: int) -> None:
+        self.state = CageState.TRAPPED
+        self.speed = 0
+        self.rect.centerx = playerX
+        self.rect.bottom = self.groundY
+        self.chainRect.centerx = self.rect.centerx
+
     def get_hitbox(self) -> Rect:
         return self.rect.inflate(-30, -20)
 
     def update(self, dt: float, playerX: int | None = None) -> None:
+        if self.state == CageState.TRAPPED:
+            chainLen = self.rect.top
+            if chainLen > 0 and chainLen != self.chainImage.get_height():
+                self.chainImage = self._getChainImage(chainLen)
+                self.chainRect = self.chainImage.get_rect(midtop=(self.rect.centerx, 0))
+            return
+
         self.rect.x -= int(self.speed * dt)
         self.chainRect.centerx = self.rect.centerx
 
