@@ -202,15 +202,15 @@ class GameScreen:
         self.groundTilemap.draw(screen)
         self.obstacles.draw(screen)
 
-        for cage in self.fallingCages:
-            cage.draw(screen)
-
         if not (self.invincibleTimer > 0 and int(self.invincibleTimer * 10) % 2 == 0):
             screen.blit(self.localPlayer.image, self.localPlayer.rect)
 
         if self.chaser:
             screen.blit(self.chaser.image, self.chaser.rect)
         self.ceilingTilemap.draw(screen)
+
+        for cage in self.fallingCages:
+            cage.draw(screen)
 
         self.hud.draw(screen, self.score, self.bGameOver)
 

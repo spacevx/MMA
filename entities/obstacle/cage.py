@@ -40,9 +40,9 @@ class FallingCage(BaseObstacle):
         self.fallVelocity: float = 0.0
 
         self.image = self._getCageImage()
-        self.chainImage = self._getChainImage(groundY - ceilingY - self.cageHeight)
         self.rect = self.image.get_rect(midtop=(x, ceilingY))
-        self.chainRect = self.chainImage.get_rect(midbottom=(x, self.rect.top))
+        self.chainImage = self._getChainImage(self.rect.top)
+        self.chainRect = self.chainImage.get_rect(midtop=(x, 0))
 
     @classmethod
     def clearCache(cls) -> None:
@@ -149,10 +149,11 @@ class FallingCage(BaseObstacle):
             if self.groundedTimer <= 0 or self.rect.right < -50:
                 self.kill()
 
-        chainLen = self.rect.top - self.ceilingY
+        chainLen = self.rect.top
         if chainLen > 0:
-            self.chainImage = self._getChainImage(chainLen)
-            self.chainRect = self.chainImage.get_rect(midbottom=(self.rect.centerx, self.rect.top))
+            if chainLen != self.chainImage.get_height():
+                self.chainImage = self._getChainImage(chainLen)
+            self.chainRect = self.chainImage.get_rect(midtop=(self.rect.centerx, 0))
         else:
             self.chainImage = pygame.Surface((1, 1), pygame.SRCALPHA)
 
