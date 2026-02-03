@@ -84,9 +84,14 @@ class DiscordRPC:
             self.bConnected = False
 
     def close(self) -> None:
-        if self.bConnected and self.rpc is not None:
+        if self.rpc is not None:
+            try:
+                self.rpc.clear()
+            except (PipeClosed, ConnectionRefusedError, BrokenPipeError, Exception):
+                pass
             try:
                 self.rpc.close()
-            except (PipeClosed, ConnectionRefusedError, BrokenPipeError):
+            except (PipeClosed, ConnectionRefusedError, BrokenPipeError, Exception):
                 pass
         self.bConnected = False
+        self.rpc = None

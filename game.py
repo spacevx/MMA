@@ -1,3 +1,4 @@
+import os
 import pygame
 from pygame import Surface
 from pygame.event import Event
@@ -16,6 +17,7 @@ from discord import DiscordRPC
 class Game:
     def __init__(self) -> None:
         pygame.init()
+        pygame.display.set_mode((width, height), 0)
         self.screen: Surface = pygame.display.set_mode((width, height), displayFlags)
         pygame.display.set_caption(title)
         self.clock: Clock = pygame.time.Clock()
@@ -154,11 +156,12 @@ class Game:
                 self.discordRpc.updatePlaying(self.gameScreen.score)
 
     def run(self) -> None:
-        while self.bRunning:
-            dt: float = self.clock.tick(fps) / 1000.0
-            self.handleEvents()
-            self.update(dt)
-            self.draw()
-
-        self.discordRpc.close()
-        pygame.quit()
+        try:
+            while self.bRunning:
+                dt: float = self.clock.tick(fps) / 1000.0
+                self.handleEvents()
+                self.update(dt)
+                self.draw()
+        finally:
+            self.discordRpc.close()
+            pygame.quit()

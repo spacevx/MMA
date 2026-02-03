@@ -184,6 +184,8 @@ class GameScreen:
             self.invincibleTimer -= dt
 
         self.localPlayer.update(dt)
+        if self.localPlayer.velocity.x != 0:
+            self.localPlayer.rect.x += int(self.localPlayer.velocity.x * dt)
         if self.chaser:
             self.chaser.setTarget(self.localPlayer.rect.centerx)
             self.chaser.update(dt)
@@ -197,6 +199,7 @@ class GameScreen:
 
     def _updateTrapped(self, dt: float) -> None:
         self.trappedTimer -= dt
+        self.localPlayer.update(dt)
         if self.trappingCage:
             self.trappingCage.update(dt)
             self.localPlayer.rect.centerx = self.trappingCage.rect.centerx
@@ -221,6 +224,7 @@ class GameScreen:
             self.trappedTimer = self.trappedDuration
             self.trappingCage = result.trappingCage
             self.trappingCage.trapPlayer(self.localPlayer.rect.centerx)
+            self.localPlayer.trap()
             pygame.time.set_timer(obstacleSpawnEvent, 0)
 
         if result.bCaught:

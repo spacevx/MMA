@@ -9,18 +9,22 @@ from paths import assetsPath
 
 runningFramesPath = assetsPath / "player" / "running" / "frames"
 slidingFramesPath = assetsPath / "player" / "sliding" / "frames"
+trappedFramesPath = assetsPath / "player" / "trapped"
 
 class PlayerState(Enum):
     RUNNING = auto()
     JUMPING = auto()
     SLIDING = auto()
+    TRAPPED = auto()
 
 class Player(AnimatedSprite):
     gravity: float = 1500.0
     jumpForce: float = -600.0
     slideDuration: float = 0.5
+    slideBoost: float = 250.0
     playerScale: float = 0.15
     slideScaleMult: float = 2.0
+    trappedScaleMult: float = 1.2
 
     def __init__(self, x: int, groundY: int) -> None:
         runningFrames = loadFrames(runningFramesPath, scale=self.playerScale)[116:132]
@@ -29,14 +33,18 @@ class Player(AnimatedSprite):
         slidingFrames = loadFrames(slidingFramesPath, targetHeight=slidingTargetHeight)
         self.slidingHeight: int = slidingFrames[0].surface.get_height()
         self.slideYOffset: int = (self.slidingHeight - self.runningHeight) // 2
+        trappedTargetHeight = int(self.runningHeight * self.trappedScaleMult)
+        trappedFrames = loadFrames(trappedFramesPath, targetHeight=trappedTargetHeight)
         super().__init__(x, groundY, runningFrames)
 
         self.runningFrames: list[AnimationFrame] = runningFrames
         self.slidingFrames: list[AnimationFrame] = slidingFrames
+        self.trappedFrames: list[AnimationFrame] = trappedFrames
         self.groundY: int = groundY
         self.velocity: Vector2 = Vector2(0, 0)
         self.state: PlayerState = PlayerState.RUNNING
         self.slideTimer: float = 0.0
+        self.slideBoostTimer: float = 0.0
         self.bOnGround: bool = True
 
     def _setFrames(self, frames: list[AnimationFrame]) -> None:
@@ -68,6 +76,7 @@ class Player(AnimatedSprite):
         if self.bOnGround and self.state == PlayerState.RUNNING:
             self.state = PlayerState.SLIDING
             self.slideTimer = self.slideDuration
+            self.slideBoostTimer = self.slideDuration
             oldCenterx = self.rect.centerx
             self._setFrames(self.slidingFrames)
             self.image = self._getFrame()
@@ -80,6 +89,14 @@ class Player(AnimatedSprite):
             self._setFrames(self.runningFrames)
             self.image = self._getFrame()
             self.rect = self.image.get_rect(centerx=oldCenterx, bottom=self.groundY)
+
+    def trap(self) -> None:
+        if self.state == PlayerState.SLIDING:
+            self._endSlide()
+        self._setFrames(self.trappedFrames)
+        self.state = PlayerState.TRAPPED
+        self.image = self._getFrame()
+        self.rect = self.image.get_rect(centerx=self.rect.centerx, bottom=self.groundY)
 
     def getHitbox(self) -> Rect:
         if self.state == PlayerState.SLIDING:
@@ -107,3 +124,9 @@ class Player(AnimatedSprite):
             self.slideTimer -= dt
             if self.slideTimer <= 0:
                 self._endSlide()
+
+        if self.slideBoostTimer > 0:
+            self.slideBoostTimer -= dt
+            self.velocity.x = self.slideBoost
+        else:
+            self.velocity.x = 0.0
