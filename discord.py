@@ -1,10 +1,27 @@
-from typing import Final
+from typing import Final, TYPE_CHECKING
 from enum import Enum, auto
 import time
-
-from pypresence import Presence, DiscordNotFound, PipeClosed
+import sys
 
 from strings import rpcGameName, rpcInMenu, rpcPlaying, rpcGameOver
+
+
+_BROWSER_ENV: Final[bool] = sys.platform == "emscripten"
+
+if not _BROWSER_ENV:
+    try:
+        from pypresence import Presence, DiscordNotFound, PipeClosed
+        _PYPRESENCE_AVAILABLE = True
+    except ImportError:
+        _PYPRESENCE_AVAILABLE = False
+        Presence = None  # type: ignore
+        DiscordNotFound = Exception  # type: ignore
+        PipeClosed = Exception  # type: ignore
+else:
+    _PYPRESENCE_AVAILABLE = False
+    Presence = None  # type: ignore
+    DiscordNotFound = Exception  # type: ignore
+    PipeClosed = Exception  # type: ignore
 
 
 clientId: Final[str] = "1468228058472386624"
@@ -17,7 +34,7 @@ class PresenceState(Enum):
 
 class DiscordRPC:
     def __init__(self) -> None:
-        self.rpc: Presence | None = None
+        self.rpc = None
         self.bConnected: bool = False
         self.currentState: PresenceState | None = None
         self.currentScore: int = 0
@@ -25,12 +42,17 @@ class DiscordRPC:
         self._connect()
 
     def _connect(self) -> None:
+        if not _PYPRESENCE_AVAILABLE or Presence is None:
+            self.bConnected = False
+            return
         try:
             self.rpc = Presence(clientId)
             self.rpc.connect()
             self.bConnected = True
             self.startTime = int(time.time())
         except (DiscordNotFound, PipeClosed, ConnectionRefusedError, FileNotFoundError):
+            self.bConnected = False
+        except Exception:
             self.bConnected = False
 
     def updateMenu(self) -> None:
@@ -46,7 +68,7 @@ class DiscordRPC:
                 large_text=rpcGameName,
                 start=self.startTime
             )
-        except (PipeClosed, ConnectionRefusedError, BrokenPipeError):
+        except (PipeClosed, ConnectionRefusedError, BrokenPipeError, RuntimeError):
             self.bConnected = False
 
     def updatePlaying(self, score: int) -> None:
@@ -63,7 +85,7 @@ class DiscordRPC:
                 large_text=rpcGameName,
                 start=self.startTime
             )
-        except (PipeClosed, ConnectionRefusedError, BrokenPipeError):
+        except (PipeClosed, ConnectionRefusedError, BrokenPipeError, RuntimeError):
             self.bConnected = False
 
     def updateGameOver(self, finalScore: int) -> None:
@@ -80,7 +102,7 @@ class DiscordRPC:
                 large_text=rpcGameName,
                 start=self.startTime
             )
-        except (PipeClosed, ConnectionRefusedError, BrokenPipeError):
+        except (PipeClosed, ConnectionRefusedError, BrokenPipeError, RuntimeError):
             self.bConnected = False
 
     def close(self) -> None:

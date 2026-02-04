@@ -1,16 +1,90 @@
 import math
+import sys
 from typing import Callable
 
 import pygame
-import pygame_gui
 from pygame import Surface
 from pygame.event import Event
 from pygame.font import Font
-from pygame_gui import UIManager
-from pygame_gui.elements import UIButton
-from pygame_gui.core import ObjectID
 
-from settings import width, height, GameState, Color, ScreenSize
+from settings import width, height, GameState, ScreenSize
+
+_BROWSER: bool = sys.platform == "emscripten"
+
+pygame_gui = None
+UIManager = None
+UIButton = None
+ObjectID = None
+
+if not _BROWSER:
+    pygame_gui = __import__("pygame_gui")
+    UIManager = getattr(__import__("pygame_gui", fromlist=["UIManager"]), "UIManager")
+    UIButton = getattr(__import__("pygame_gui.elements", fromlist=["UIButton"]), "UIButton")
+    ObjectID = getattr(__import__("pygame_gui.core", fromlist=["ObjectID"]), "ObjectID")
+
+
+class _SimpleButton:
+    """Pure pygame button for browser fallback."""
+
+    def __init__(
+        self,
+        rect: pygame.Rect,
+        text: str,
+        font: Font,
+        normalBg: tuple[int, int, int] = (139, 0, 0),
+        hoverBg: tuple[int, int, int] = (178, 34, 34),
+        activeBg: tuple[int, int, int] = (220, 20, 60),
+        textColor: tuple[int, int, int] = (255, 255, 255),
+        borderColor: tuple[int, int, int] = (74, 74, 74),
+        borderWidth: int = 3,
+    ) -> None:
+        self.rect: pygame.Rect = rect
+        self.text: str = text
+        self.font: Font = font
+        self.normalBg = normalBg
+        self.hoverBg = hoverBg
+        self.activeBg = activeBg
+        self.textColor = textColor
+        self.borderColor = borderColor
+        self.borderWidth = borderWidth
+        self.bHovered: bool = False
+        self.bPressed: bool = False
+
+    def setPosition(self, x: int, y: int) -> None:
+        self.rect.x = x
+        self.rect.y = y
+
+    def setDimensions(self, w: int, h: int) -> None:
+        self.rect.width = w
+        self.rect.height = h
+
+    def handleEvent(self, event: Event) -> bool:
+        if event.type == pygame.MOUSEMOTION:
+            self.bHovered = self.rect.collidepoint(event.pos)
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            if self.rect.collidepoint(event.pos):
+                self.bPressed = True
+        elif event.type == pygame.MOUSEBUTTONUP and event.button == 1:
+            if self.bPressed and self.rect.collidepoint(event.pos):
+                self.bPressed = False
+                return True
+            self.bPressed = False
+        return False
+
+    def draw(self, screen: Surface) -> None:
+        if self.bPressed:
+            bg = self.activeBg
+        elif self.bHovered:
+            bg = self.hoverBg
+        else:
+            bg = self.normalBg
+
+        pygame.draw.rect(screen, bg, self.rect, border_radius=4)
+        pygame.draw.rect(screen, self.borderColor, self.rect, self.borderWidth, border_radius=4)
+
+        textSurf = self.font.render(self.text, True, self.textColor)
+        textRect = textSurf.get_rect(center=self.rect.center)
+        screen.blit(textSurf, textRect)
 
 
 class MainMenu:
@@ -22,8 +96,11 @@ class MainMenu:
         self.screenSize: ScreenSize = (width, height)
         self.scale: float = min(width / self.baseW, height / self.baseH)
 
-        self.manager: UIManager = UIManager(self.screenSize, theme_path=None)
-        self._setupTheme()
+        self.bBrowser: bool = _BROWSER
+
+        if not self.bBrowser:
+            self.manager: UIManager = UIManager(self.screenSize, theme_path=None)
+            self._setupTheme()
 
         self.bgCache: Surface | None = None
         self.vignetteCache: Surface | None = None
@@ -33,10 +110,17 @@ class MainMenu:
 
         self._buildCaches()
 
-        self.startBtn: UIButton | None = None
-        self.optionsBtn: UIButton | None = None
-        self.quitBtn: UIButton | None = None
-        self._createButtons()
+        if self.bBrowser:
+            self.buttonFont: Font = pygame.font.Font(None, self._s(28))
+            self.startBtn: _SimpleButton | None = None
+            self.optionsBtn: _SimpleButton | None = None
+            self.quitBtn: _SimpleButton | None = None
+            self._createSimpleButtons()
+        else:
+            self.startBtn: UIButton | None = None
+            self.optionsBtn: UIButton | None = None
+            self.quitBtn: UIButton | None = None
+            self._createButtons()
 
         self.titleFont: Font = pygame.font.Font(None, self._s(160))
 
@@ -86,6 +170,12 @@ class MainMenu:
             pygame.Rect(cx, baseY + gap * 2, w, h),
         ]
 
+    def _createSimpleButtons(self) -> None:
+        rects = self._getButtonRects()
+        self.startBtn = _SimpleButton(rects[0], "COMMENCER LE JEU", self.buttonFont)
+        self.optionsBtn = _SimpleButton(rects[1], "OPTIONS", self.buttonFont)
+        self.quitBtn = _SimpleButton(rects[2], "QUITTER", self.buttonFont)
+
     def _createButtons(self) -> None:
         rects = self._getButtonRects()
         self.startBtn = UIButton(
@@ -103,10 +193,16 @@ class MainMenu:
 
     def _updateButtonPositions(self) -> None:
         rects = self._getButtonRects()
-        for btn, rect in zip([self.startBtn, self.optionsBtn, self.quitBtn], rects):
-            if btn:
-                btn.set_relative_position((rect.x, rect.y))
-                btn.set_dimensions((rect.width, rect.height))
+        if self.bBrowser:
+            for btn, rect in zip([self.startBtn, self.optionsBtn, self.quitBtn], rects):
+                if btn:
+                    btn.setPosition(rect.x, rect.y)
+                    btn.setDimensions(rect.width, rect.height)
+        else:
+            for btn, rect in zip([self.startBtn, self.optionsBtn, self.quitBtn], rects):
+                if btn:
+                    btn.set_relative_position((rect.x, rect.y))
+                    btn.set_dimensions((rect.width, rect.height))
 
     def _buildCaches(self) -> None:
         w, h = self.screenSize
@@ -276,28 +372,45 @@ class MainMenu:
     def onResize(self, newSize: ScreenSize) -> None:
         self.screenSize = newSize
         self.scale = min(newSize[0] / self.baseW, newSize[1] / self.baseH)
-        self.manager.set_window_resolution(newSize)
-        self._setupTheme()
+        if not self.bBrowser:
+            self.manager.set_window_resolution(newSize)
+            self._setupTheme()
+        else:
+            self.buttonFont = pygame.font.Font(None, self._s(28))
+            if self.startBtn:
+                self.startBtn.font = self.buttonFont
+            if self.optionsBtn:
+                self.optionsBtn.font = self.buttonFont
+            if self.quitBtn:
+                self.quitBtn.font = self.buttonFont
         self._buildCaches()
         self._updateButtonPositions()
         self.titleFont = pygame.font.Font(None, self._s(160))
 
     def handleEvent(self, event: Event) -> None:
-        self.manager.process_events(event)
-
-        if event.type == pygame_gui.UI_BUTTON_PRESSED:
-            if event.ui_element == self.startBtn:
+        if self.bBrowser:
+            if self.startBtn and self.startBtn.handleEvent(event):
                 self.setState(GameState.GAME)
-            elif event.ui_element == self.optionsBtn:
+            elif self.optionsBtn and self.optionsBtn.handleEvent(event):
                 self.setState(GameState.OPTIONS)
-            elif event.ui_element == self.quitBtn:
+            elif self.quitBtn and self.quitBtn.handleEvent(event):
                 self.setState(GameState.QUIT)
+        else:
+            self.manager.process_events(event)
+            if pygame_gui and event.type == pygame_gui.UI_BUTTON_PRESSED:
+                if event.ui_element == self.startBtn:
+                    self.setState(GameState.GAME)
+                elif event.ui_element == self.optionsBtn:
+                    self.setState(GameState.OPTIONS)
+                elif event.ui_element == self.quitBtn:
+                    self.setState(GameState.QUIT)
 
     def update(self, dt: float) -> None:
         self.time += dt
         self.titlePulse += dt * 3
         self.spotlightFlicker = 0.85 + 0.15 * math.sin(self.time * 8) + 0.1 * math.sin(self.time * 13)
-        self.manager.update(dt)
+        if not self.bBrowser:
+            self.manager.update(dt)
 
     def draw(self, screen: Surface) -> None:
         w, h = self.screenSize
@@ -319,4 +432,12 @@ class MainMenu:
 
         self._drawTitle(screen)
 
-        self.manager.draw_ui(screen)
+        if self.bBrowser:
+            if self.startBtn:
+                self.startBtn.draw(screen)
+            if self.optionsBtn:
+                self.optionsBtn.draw(screen)
+            if self.quitBtn:
+                self.quitBtn.draw(screen)
+        else:
+            self.manager.draw_ui(screen)

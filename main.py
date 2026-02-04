@@ -1,13 +1,14 @@
+import asyncio
 import flags
 from game import Game
 
 
-def main() -> None:
+async def main() -> None:
     flags.parse()
 
     game = Game()
-    game.run()
+    await game.run()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

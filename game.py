@@ -1,3 +1,4 @@
+import asyncio
 import os
 import pygame
 from pygame import Surface
@@ -155,13 +156,14 @@ class Game:
             else:
                 self.discordRpc.updatePlaying(self.gameScreen.score)
 
-    def run(self) -> None:
+    async def run(self) -> None:
         try:
             while self.bRunning:
                 dt: float = self.clock.tick(fps) / 1000.0
                 self.handleEvents()
                 self.update(dt)
                 self.draw()
+                await asyncio.sleep(0)
         finally:
             self.discordRpc.close()
             pygame.quit()
