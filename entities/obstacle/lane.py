@@ -19,7 +19,7 @@ class Obstacle(BaseObstacle):
 
     bodyImagePath: Path = assetsPath / "lanes" / "body.png"
     playerScale: float = 0.15
-    heightRatio: float = 2.0
+    heightRatio: float = 0.7
     widthRatio: float = 1.8
 
     @classmethod
@@ -49,12 +49,35 @@ class Obstacle(BaseObstacle):
             try:
                 raw = pygame.image.load(str(cls.bodyImagePath))
                 if pygame.display.get_surface():
-                    cls._texture = raw.convert_alpha()
-                else:
-                    cls._texture = raw
+                    raw = raw.convert_alpha()
+                cls._texture = cls._cropToContent(raw)
             except (pygame.error, FileNotFoundError):
                 cls._texture = None
         return cls._texture
+
+    # Took from a pygame forum, for a issue where the sprite couldn't be croped right
+    @classmethod
+    def _cropToContent(cls, surface: Surface) -> Surface:
+        mask = pygame.mask.from_surface(surface, threshold=10)
+        rects = mask.get_bounding_rects()
+        if not rects:
+            return surface
+
+        minArea = 100
+        significantRects = [r for r in rects if r.width * r.height >= minArea]
+
+        if not significantRects:
+            significantRects = rects
+
+        contentRect = significantRects[0].copy()
+        for r in significantRects[1:]:
+            contentRect.union_ip(r)
+
+        contentRect.inflate_ip(4, 4)
+        contentRect.clamp_ip(surface.get_rect())
+        cropped = pygame.Surface(contentRect.size, pygame.SRCALPHA)
+        cropped.blit(surface, (0, 0), contentRect)
+        return cropped
 
     @classmethod
     def _getImage(cls, w: int, h: int) -> Surface:
@@ -78,8 +101,10 @@ class Obstacle(BaseObstacle):
                 sw = max(1, int(h * srcRatio))
 
             scaled = pygame.transform.smoothscale(texture, (sw, sh))
-            surface = pygame.Surface((sw, sh), pygame.SRCALPHA)
-            surface.blit(scaled, (0, 0))
+            surface = pygame.Surface((w, h), pygame.SRCALPHA)
+            blitX = (w - sw) // 2
+            blitY = h - sh
+            surface.blit(scaled, (blitX, blitY))
             return surface
         else:
             return cls._createFallback(w, h)
