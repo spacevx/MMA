@@ -26,7 +26,7 @@ class Player(AnimatedSprite):
     slideScaleMult: float = 2.0
     trappedScaleMult: float = 1.2
 
-    def __init__(self, x: int, groundY: int) -> None:
+    def __init__(self, x: int, groundY: int, onJump=None, onSlide=None) -> None:
         runningFrames = loadFrames(runningFramesPath, scale=self.playerScale)[116:132]
         self.runningHeight: int = runningFrames[0].surface.get_height()
         slidingTargetHeight = int(self.runningHeight * self.slideScaleMult)
@@ -47,6 +47,8 @@ class Player(AnimatedSprite):
         self.slideBoostTimer: float = 0.0
         self.slideCooldownTimer: float = 0.0
         self.bOnGround: bool = True
+        self.onJump = onJump
+        self.onSlide = onSlide
 
     def _setFrames(self, frames: list[AnimationFrame]) -> None:
         self.frames = frames
@@ -72,6 +74,8 @@ class Player(AnimatedSprite):
             self.bOnGround = False
             self.image = self._getFrame()
             self.rect = self.image.get_rect(midbottom=self.rect.midbottom)
+            if self.onJump:
+                self.onJump()
 
     def _slide(self) -> None:
         if self.bOnGround and self.state == PlayerState.RUNNING and self.slideCooldownTimer <= 0:
@@ -83,6 +87,8 @@ class Player(AnimatedSprite):
             self._setFrames(self.slidingFrames)
             self.image = self._getFrame()
             self.rect = self.image.get_rect(centerx=oldCenterx, bottom=self.groundY + self.slideYOffset)
+            if self.onSlide:
+                self.onSlide()
 
     def _endSlide(self) -> None:
         if self.state == PlayerState.SLIDING:
