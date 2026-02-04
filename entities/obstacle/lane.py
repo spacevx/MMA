@@ -5,56 +5,84 @@ from pygame import Surface, Rect
 
 from settings import Color
 from paths import assetsPath
+from entities.animation import loadFrames
+from entities.player import getRunningHeight
 from .base import BaseObstacle
+
+playerRunningFramesPath = assetsPath / "player" / "running" / "frames"
 
 
 class Obstacle(BaseObstacle):
     _texture: Surface | None = None
-    _cache: Surface | None = None
+    _cache: dict[tuple[int, int], Surface] = {}
+    _playerHeight: int | None = None
 
-    bodyWidth: int = 150
-    bodyHeight: int = 50
+    bodyImagePath: Path = assetsPath / "lanes" / "body.png"
+    playerScale: float = 0.15
+    heightRatio: float = 2.0
+    widthRatio: float = 1.8
 
-    def __init__(self, x: int, groundY: int) -> None:
+    @classmethod
+    def _getPlayerHeight(cls) -> int:
+        if cls._playerHeight is None:
+            cls._playerHeight = getRunningHeight(cls.playerScale)
+        return cls._playerHeight
+
+    def __init__(self, x: int, groundY: int, scale: float = 1.0) -> None:
         super().__init__()
-        self.image = self._getImage()
-        self.rect = self.image.get_rect(midbottom=(x, groundY))
+        self.scale = scale
+        playerH = self._getPlayerHeight()
+        h = max(1, int(playerH * self.heightRatio * scale))
+        w = max(1, int(h * self.widthRatio))
+        self.image = self._getImage(w, h)
+        self.rect = self.image.get_rect(centerx=x, bottom=groundY)
 
     @classmethod
     def clearCache(cls) -> None:
         cls._texture = None
-        cls._cache = None
+        cls._cache.clear()
+        cls._playerHeight = None
 
     @classmethod
     def _loadTexture(cls) -> Surface | None:
         if cls._texture is None:
             try:
-                path: Path = assetsPath / "obstacles" / "bodies" / "body.png"
-                cls._texture = pygame.image.load(str(path)).convert_alpha()
+                raw = pygame.image.load(str(cls.bodyImagePath))
+                if pygame.display.get_surface():
+                    cls._texture = raw.convert_alpha()
+                else:
+                    cls._texture = raw
             except (pygame.error, FileNotFoundError):
                 cls._texture = None
         return cls._texture
 
     @classmethod
-    def _getImage(cls) -> Surface:
-        if cls._cache is None:
-            cls._cache = cls._createSurface(cls.bodyWidth, cls.bodyHeight)
-        return cls._cache
+    def _getImage(cls, w: int, h: int) -> Surface:
+        key = (w, h)
+        if key not in cls._cache:
+            cls._cache[key] = cls._createSurface(w, h)
+        return cls._cache[key]
 
     @classmethod
     def _createSurface(cls, w: int, h: int) -> Surface:
-        surface = pygame.Surface((w, h), pygame.SRCALPHA)
-
         if (texture := cls._loadTexture()) is not None:
             tw, th = texture.get_width(), texture.get_height()
-            scale = min(w / tw, h / th) * 0.95
-            sw, sh = int(tw * scale), int(th * scale)
-            scaled = pygame.transform.smoothscale(texture, (sw, sh))
-            surface.blit(scaled, ((w - sw) // 2, (h - sh) // 2))
-        else:
-            surface = cls._createFallback(w, h)
+            srcRatio = tw / th
+            tgtRatio = w / h
 
-        return surface
+            if srcRatio > tgtRatio:
+                sw = w
+                sh = max(1, int(w / srcRatio))
+            else:
+                sh = h
+                sw = max(1, int(h * srcRatio))
+
+            scaled = pygame.transform.smoothscale(texture, (sw, sh))
+            surface = pygame.Surface((sw, sh), pygame.SRCALPHA)
+            surface.blit(scaled, (0, 0))
+            return surface
+        else:
+            return cls._createFallback(w, h)
 
     @classmethod
     def _createFallback(cls, w: int, h: int) -> Surface:
@@ -79,4 +107,6 @@ class Obstacle(BaseObstacle):
         return surface
 
     def get_hitbox(self) -> Rect:
-        return self.rect.inflate(-20, -10)
+        shrinkX = int(self.rect.width * 0.15)
+        shrinkY = int(self.rect.height * 0.1)
+        return self.rect.inflate(-shrinkX, -shrinkY)

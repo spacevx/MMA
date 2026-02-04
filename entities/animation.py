@@ -39,12 +39,17 @@ def loadFrames(
     path: Path,
     pattern: str = r"frame_(\d+)_delay-([\d.]+)s\.gif",
     scale: float = 1.0,
-    targetHeight: Optional[int] = None
+    targetHeight: Optional[int] = None,
+    frameSlice: slice | None = None
 ) -> list[AnimationFrame]:
     regex = re.compile(pattern)
     frames: list[AnimationFrame] = []
 
-    for file in sorted(path.glob("*.gif")):
+    files = sorted(path.glob("*.gif"))
+    if frameSlice is not None:
+        files = files[frameSlice]
+
+    for file in files:
         if match := regex.match(file.name):
             delay = float(match.group(2))
             try:

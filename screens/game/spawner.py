@@ -47,7 +47,7 @@ class ObstacleSpawner:
 
     def _spawnObstacle(self, obstacles: Group[Obstacle]) -> None:
         x = self.screenSize[0] + self._s(100)
-        obstacle = Obstacle(x, self.groundY)
+        obstacle = Obstacle(x, self.groundY, self.scale)
         obstacle.speed = self.scrollSpeed
         obstacles.add(obstacle)
 

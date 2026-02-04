@@ -11,6 +11,15 @@ runningFramesPath = assetsPath / "player" / "running" / "frames"
 slidingFramesPath = assetsPath / "player" / "sliding" / "frames"
 trappedFramesPath = assetsPath / "player" / "trapped"
 
+_cachedRunningHeight: int | None = None
+
+def getRunningHeight(scale: float = 0.15) -> int:
+    global _cachedRunningHeight
+    if _cachedRunningHeight is None:
+        frames = loadFrames(runningFramesPath, scale=scale, frameSlice=slice(116, 117))
+        _cachedRunningHeight = frames[0].surface.get_height()
+    return _cachedRunningHeight
+
 class PlayerState(Enum):
     RUNNING = auto()
     JUMPING = auto()
@@ -27,7 +36,7 @@ class Player(AnimatedSprite):
     trappedScaleMult: float = 1.2
 
     def __init__(self, x: int, groundY: int) -> None:
-        runningFrames = loadFrames(runningFramesPath, scale=self.playerScale)[116:132]
+        runningFrames = loadFrames(runningFramesPath, scale=self.playerScale, frameSlice=slice(116, 132))
         self.runningHeight: int = runningFrames[0].surface.get_height()
         slidingTargetHeight = int(self.runningHeight * self.slideScaleMult)
         slidingFrames = loadFrames(slidingFramesPath, targetHeight=slidingTargetHeight)

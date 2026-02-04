@@ -5,6 +5,7 @@ from pygame.sprite import Group
 
 from entities.animation import AnimatedSprite, loadFrames
 from entities.obstacle.cage import FallingCage, CageState
+from entities.player import getRunningHeight
 from paths import assetsPath
 
 playerRunningFramesPath = assetsPath / "player" / "running" / "frames"
@@ -33,8 +34,7 @@ class Chaser(AnimatedSprite):
     jumpScaleMult: float = 1.5
 
     def __init__(self, x: int, groundY: int) -> None:
-        playerFrames = loadFrames(playerRunningFramesPath, scale=self.playerScale)
-        targetHeight = playerFrames[0].surface.get_height()
+        targetHeight = getRunningHeight(self.playerScale)
         runningFrames = loadFrames(chaserRunningFramesPath, targetHeight=targetHeight)
         runningHeight = runningFrames[0].surface.get_height()
         jumpingTargetHeight = int(runningHeight * self.jumpScaleMult)
