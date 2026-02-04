@@ -35,6 +35,7 @@ class Player(AnimatedSprite):
     playerScale: float = 0.15
     slideScaleMult: float = 2.0
     trappedScaleMult: float = 1.2
+    slideImmunityWindow: float = 0.8
 
     def __init__(self, x: int, groundY: int) -> None:
         runningFrames = loadFrames(runningFramesPath, scale=self.playerScale, frameSlice=slice(116, 132))
@@ -152,3 +153,9 @@ class Player(AnimatedSprite):
 
     def isBoostActive(self) -> bool:
         return self.slideBoostTimer > 0
+
+    def isInImmunityWindow(self) -> bool:
+        if self.state != PlayerState.SLIDING:
+            return False
+        timeInSlide = self.slideDuration - self.slideTimer
+        return timeInSlide <= self.slideImmunityWindow

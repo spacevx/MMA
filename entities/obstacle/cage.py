@@ -24,7 +24,7 @@ class FallingCage(BaseObstacle):
     chainWidth: int = 8
     fallSpeed: float = 700.0
     warningDuration: float = 0.6
-    triggerDistance: float = 275.0
+    triggerDistance: float = 475.0
     groundedDuration: float = 0.8
 
     def __init__(self, x: int, ceilingY: int, groundY: int, scrollSpeed: float = 400.0) -> None:
@@ -137,8 +137,8 @@ class FallingCage(BaseObstacle):
 
         if self.state == CageState.HANGING:
             if playerX is not None:
-                dist = self.rect.centerx - playerX
-                if 0 < dist < self.triggerDistance:
+                dist = abs(self.rect.centerx - playerX)
+                if dist < self.triggerDistance:
                     self.triggerFall()
 
         elif self.state == CageState.WARNING:

@@ -43,7 +43,7 @@ class CollisionSystem:
         return True
 
     def _cageCallback(self, player: Player, cage: FallingCage) -> bool:
-        if cage.state not in (CageState.FALLING, CageState.GROUNDED):
+        if cage.state != CageState.FALLING:
             return False
 
         playerHitbox = player.getHitbox()
@@ -52,9 +52,8 @@ class CollisionSystem:
         if not playerHitbox.colliderect(cageHitbox):
             return False
 
-        if player.state == PlayerState.SLIDING:
-            if playerHitbox.top > cageHitbox.bottom - self._s(150):
-                return False
+        if player.isInImmunityWindow():
+            return False
 
         return True
 
