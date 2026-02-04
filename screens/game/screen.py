@@ -1,11 +1,10 @@
-from __future__ import annotations
-
 from typing import Callable
 
 import pygame
 from pygame import Surface
 from pygame.event import Event
 from pygame.sprite import Group
+
 
 import flags
 from settings import GameState, ScreenSize, width, height, obstacleSpawnEvent
@@ -21,18 +20,18 @@ from .collision import CollisionSystem
 
 tilesPath = assetsPath / "tiles" / "ground"
 ceilingTilesPath = assetsPath / "tiles" / "ceiling"
-
+songsPath = assetsPath / "songs"
 
 class GameScreen:
-    baseW: int = 1280
-    baseH: int = 720
+    baseW: int = 1920
+    baseH: int = 1080
     scrollSpeedConst: float = 400.0
     groundRatio: float = 1.0
 
     def __init__(self, setStateCallback: Callable[[GameState], None]) -> None:
         self.setState = setStateCallback
         self.screenSize: ScreenSize = (width, height)
-        self.scale = min(width / self.baseW, height / self.baseH)
+        self.scale = min(width / self.baseW, height / self.baseH) 
 
         Obstacle.clearCache()
         self._loadBackground()
@@ -69,6 +68,37 @@ class GameScreen:
         self.hud = HUD(self.screenSize)
         self.spawner = ObstacleSpawner(self.screenSize, self.groundY, self.scrollSpeed)
         self.collisionSystem = CollisionSystem(self.screenSize)
+        # audio placeholders
+        self.bgMusic = None
+        self.soundTimer = 0.0
+        self.soundDuration = 5.0
+        self.soundActive = False
+        self.startAudio()
+    def _loadAudio(self) -> None:
+        try:
+            bgm_path = songsPath / "The Good Fight (just intro).ogg"
+            self.bgMusic = pygame.mixer.Sound(str(bgm_path))
+        except (pygame.error, FileNotFoundError) as e:
+            print(f"Erreur lors du chargement du son: {e}")
+            self.bgMusic = None
+
+    def startAudio(self) -> None:
+        # charge le son si besoin et le joue; active le timer de répétition
+        if self.bgMusic is None:
+            self._loadAudio()
+        if self.bgMusic:
+            self.bgMusic.play(-1)  # -1 pour jouer en boucle infinie
+            self.soundTimer = 0.0
+            self.soundActive = True
+
+    def stopAudio(self) -> None:
+        # arrête la musique et désactive la logique de répétition
+        if self.bgMusic:
+            try:
+                self.bgMusic.stop()
+            except Exception:
+                pass
+        self.soundActive = False
 
     def _s(self, val: int) -> int:
         return max(1, int(val * self.scale))
@@ -152,6 +182,7 @@ class GameScreen:
         self.trappingCage = None
 
         self.spawner.reset()
+        self.startAudio()
 
     def handleEvent(self, event: Event) -> None:
         if event.type == pygame.KEYDOWN:
@@ -170,8 +201,7 @@ class GameScreen:
             self._updateTrapped(dt)
             return
 
-        boostMult = 2.2 if self.localPlayer.isBoostActive() else 1.0
-        scrollDelta = self.scrollSpeed * dt * boostMult
+        scrollDelta = self.scrollSpeed * dt
         self.scrollX += scrollDelta
         if self.scrollX >= self.bgWidth:
             self.scrollX -= self.bgWidth
@@ -179,8 +209,7 @@ class GameScreen:
         self.groundTilemap.update(scrollDelta)
         cageXs = self.ceilingTilemap.update(scrollDelta)
         for cx in cageXs:
-            if self.spawner.canSpawnCage():
-                self.spawner.spawnCageAt(cx, self.ceiling.height, self.fallingCages)
+            self.spawner.spawnCageAt(cx, self.ceiling.height, self.fallingCages)
 
         self.score += int(self.scrollSpeed * dt * 0.1)
 
@@ -188,6 +217,8 @@ class GameScreen:
             self.invincibleTimer -= dt
 
         self.localPlayer.update(dt)
+        if self.localPlayer.velocity.x != 0:
+            self.localPlayer.rect.x += int(self.localPlayer.velocity.x * dt)
         if self.chaser:
             self.chaser.setTarget(self.localPlayer.rect.centerx)
             self.chaser.update(dt, self.fallingCages)
@@ -220,6 +251,11 @@ class GameScreen:
             self.invincibleTimer = self.invincibleDuration
             if self.chaser:
                 self.chaser.onPlayerHit()
+            # arrêter la musique si le joueur est touché
+            try:
+                self.stopAudio()
+            except Exception:
+                pass
 
         if result.bHitCage and result.trappingCage:
             self.bPlayerTrapped = True
@@ -228,10 +264,18 @@ class GameScreen:
             self.trappingCage.trapPlayer(self.localPlayer.rect.centerx)
             self.localPlayer.trap()
             pygame.time.set_timer(obstacleSpawnEvent, 0)
+            try:
+                self.stopAudio()
+            except Exception:
+                pass
 
         if result.bCaught:
             self.bGameOver = True
             pygame.time.set_timer(obstacleSpawnEvent, 0)
+            try:
+                self.stopAudio()
+            except Exception:
+                pass
 
     def draw(self, screen: Surface) -> None:
         self._drawScrollingBackground(screen)
