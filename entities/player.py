@@ -25,6 +25,7 @@ class PlayerState(Enum):
     JUMPING = auto()
     SLIDING = auto()
     TRAPPED = auto()
+    TACKLED = auto()
 
 class Player(AnimatedSprite):
     gravity: float = 1100.0
@@ -108,6 +109,14 @@ class Player(AnimatedSprite):
         self.state = PlayerState.TRAPPED
         self.image = self._getFrame()
         self.rect = self.image.get_rect(centerx=self.rect.centerx, bottom=self.groundY)
+
+    def tackle(self) -> None:
+        if self.state == PlayerState.SLIDING:
+            self._endSlide()
+        self.state = PlayerState.TACKLED
+        self.velocity = Vector2(0, 0)
+        self.bOnGround = True
+        self.rect.bottom = self.groundY
 
     def getHitbox(self) -> Rect:
         if self.state == PlayerState.SLIDING:

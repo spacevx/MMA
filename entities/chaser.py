@@ -19,6 +19,7 @@ class ChaserState(Enum):
     JUMPING = auto()
     ON_CAGE = auto()
     JUMPING_OFF = auto()
+    CATCHING = auto()
 
 
 class Chaser(AnimatedSprite):
@@ -34,6 +35,7 @@ class Chaser(AnimatedSprite):
     cageDetectionRange: float = 550.0
     obstacleDetectionRange: float = 300.0
     jumpScaleMult: float = 1.5
+    catchingSpeed: float = 600.0
 
     def __init__(self, x: int, groundY: int) -> None:
         targetHeight = getRunningHeight(self.playerScale)
@@ -55,6 +57,7 @@ class Chaser(AnimatedSprite):
         self.velocityY: float = 0.0
         self.bOnGround: bool = True
         self.currentCage: FallingCage | None = None
+        self.catchTargetX: int = 0
 
     def setGroundY(self, groundY: int) -> None:
         self.groundY = groundY
@@ -70,6 +73,15 @@ class Chaser(AnimatedSprite):
 
     def hasCaughtPlayer(self, playerRect: Rect) -> bool:
         return self.rect.colliderect(playerRect)
+
+    def startCatching(self, targetX: int) -> None:
+        self.state = ChaserState.CATCHING
+        self.catchTargetX = targetX
+        if not self.bOnGround:
+            self.rect.bottom = self.groundY
+            self.bOnGround = True
+            self.velocityY = 0.0
+        self._setFrames(self.runningFrames)
 
     def _setFrames(self, frames: list[AnimationFrame]) -> None:
         self.frames = frames
@@ -188,6 +200,11 @@ class Chaser(AnimatedSprite):
                 self.bOnGround = True
                 self._setFrames(self.runningFrames)
                 self.state = ChaserState.RUNNING
+
+        elif self.state == ChaserState.CATCHING:
+            self.posX += self.catchingSpeed * dt
+            self.rect.midbottom = (int(self.posX), self.groundY)
+            return
 
         if (diff := self.targetX - self.posX) > 0:
             self.posX += min(self.speed * dt, diff)

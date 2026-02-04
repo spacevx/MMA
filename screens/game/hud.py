@@ -102,8 +102,38 @@ class HUD:
         restartRect = restartSurf.get_rect(center=(cx, cy + self._s(90)))
         screen.blit(restartSurf, restartRect)
 
-    def draw(self, screen: Surface, score: int, bGameOver: bool) -> None:
+    def drawHitCounter(self, screen: Surface, hitCount: int, maxHits: int) -> None:
+        x = self.screenSize[0] - self._s(200)
+        y = self._s(25)
+        boxW = self._s(180)
+        boxH = self._s(60)
+        boxSurf = pygame.Surface((boxW, boxH), pygame.SRCALPHA)
+        pygame.draw.rect(boxSurf, (0, 0, 0, 120), (0, 0, boxW, boxH), border_radius=self._s(8))
+        pygame.draw.rect(boxSurf, (255, 255, 255, 40), (0, 0, boxW, boxH), self._s(2), border_radius=self._s(8))
+        screen.blit(boxSurf, (x - self._s(10), y - self._s(10)))
+
+        heartSize = self._s(32)
+        spacing = self._s(45)
+        startX = x + self._s(10)
+        for i in range(maxHits):
+            heartX = startX + i * spacing
+            heartY = y + self._s(5)
+            if i < hitCount:
+                color = (80, 80, 80)
+            else:
+                color = (220, 50, 50)
+            pygame.draw.polygon(screen, color, [
+                (heartX + heartSize // 2, heartY + heartSize),
+                (heartX, heartY + heartSize // 3),
+                (heartX + heartSize // 4, heartY),
+                (heartX + heartSize // 2, heartY + heartSize // 4),
+                (heartX + heartSize * 3 // 4, heartY),
+                (heartX + heartSize, heartY + heartSize // 3),
+            ])
+
+    def draw(self, screen: Surface, score: int, bGameOver: bool, hitCount: int = 0, maxHits: int = 3) -> None:
         self.drawScore(screen, score)
+        self.drawHitCounter(screen, hitCount, maxHits)
         self.drawControls(screen)
         if bGameOver:
             self.drawGameOver(screen, score)
