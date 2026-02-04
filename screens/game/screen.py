@@ -168,7 +168,8 @@ class GameScreen:
             self._updateTrapped(dt)
             return
 
-        scrollDelta = self.scrollSpeed * dt
+        boostMult = 1.8 if self.localPlayer.isBoostActive() else 1.0
+        scrollDelta = self.scrollSpeed * dt * boostMult
         self.scrollX += scrollDelta
         if self.scrollX >= self.bgWidth:
             self.scrollX -= self.bgWidth
@@ -184,8 +185,6 @@ class GameScreen:
             self.invincibleTimer -= dt
 
         self.localPlayer.update(dt)
-        if self.localPlayer.velocity.x != 0:
-            self.localPlayer.rect.x += int(self.localPlayer.velocity.x * dt)
         if self.chaser:
             self.chaser.setTarget(self.localPlayer.rect.centerx)
             self.chaser.update(dt)

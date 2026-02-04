@@ -21,7 +21,7 @@ class Player(AnimatedSprite):
     gravity: float = 1500.0
     jumpForce: float = -600.0
     slideDuration: float = 0.5
-    slideBoost: float = 250.0
+    slideCooldown: float = 0.8
     playerScale: float = 0.15
     slideScaleMult: float = 2.0
     trappedScaleMult: float = 1.2
@@ -45,6 +45,7 @@ class Player(AnimatedSprite):
         self.state: PlayerState = PlayerState.RUNNING
         self.slideTimer: float = 0.0
         self.slideBoostTimer: float = 0.0
+        self.slideCooldownTimer: float = 0.0
         self.bOnGround: bool = True
 
     def _setFrames(self, frames: list[AnimationFrame]) -> None:
@@ -73,10 +74,11 @@ class Player(AnimatedSprite):
             self.rect = self.image.get_rect(midbottom=self.rect.midbottom)
 
     def _slide(self) -> None:
-        if self.bOnGround and self.state == PlayerState.RUNNING:
+        if self.bOnGround and self.state == PlayerState.RUNNING and self.slideCooldownTimer <= 0:
             self.state = PlayerState.SLIDING
             self.slideTimer = self.slideDuration
             self.slideBoostTimer = self.slideDuration
+            self.slideCooldownTimer = self.slideCooldown
             oldCenterx = self.rect.centerx
             self._setFrames(self.slidingFrames)
             self.image = self._getFrame()
@@ -127,6 +129,8 @@ class Player(AnimatedSprite):
 
         if self.slideBoostTimer > 0:
             self.slideBoostTimer -= dt
-            self.velocity.x = self.slideBoost
-        else:
-            self.velocity.x = 0.0
+        if self.slideCooldownTimer > 0:
+            self.slideCooldownTimer -= dt
+
+    def isBoostActive(self) -> bool:
+        return self.slideBoostTimer > 0
