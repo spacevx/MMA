@@ -208,8 +208,8 @@ class CeilingTileData:
 
 class CeilingTilemap:
     bufferColumns: int = 3
-    cageChance: float = 0.12
-    minTilesBetweenCages: int = 4
+    cageChance: float = 0.06
+    minTilesBetweenCages: int = 10
 
     def __init__(self, tileset: CeilingTileSet, screenW: int, ceilingH: int = 60) -> None:
         self.tileset = tileset

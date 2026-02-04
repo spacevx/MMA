@@ -22,10 +22,10 @@ ceilingTilesPath = assetsPath / "tiles" / "ceiling"
 
 
 class GameScreen:
-    baseW: int = 1920
-    baseH: int = 1080
+    baseW: int = 1280
+    baseH: int = 720
     scrollSpeedConst: float = 400.0
-    groundRatio: float = 0.85
+    groundRatio: float = 1.0
 
     def __init__(self, setStateCallback: Callable[[GameState], None]) -> None:
         self.setState = setStateCallback
@@ -168,7 +168,7 @@ class GameScreen:
             self._updateTrapped(dt)
             return
 
-        boostMult = 1.8 if self.localPlayer.isBoostActive() else 1.0
+        boostMult = 2.2 if self.localPlayer.isBoostActive() else 1.0
         scrollDelta = self.scrollSpeed * dt * boostMult
         self.scrollX += scrollDelta
         if self.scrollX >= self.bgWidth:
