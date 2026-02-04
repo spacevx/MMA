@@ -9,7 +9,7 @@ class Chaser(Sprite):
     baseSpeed: float = 150.0
     speedBoostOnHit: float = 50.0
     approachOnHit: int = 80
-    followOffset: int = 150
+    followOffset: int = 250
     width: int = 140
     height: int = 95
 
