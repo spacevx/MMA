@@ -1,3 +1,4 @@
+from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Final
@@ -69,13 +70,13 @@ class GroundTilemap:
         self.groundY = groundY
         self.groundH = groundH
         self.scrollOffset: float = 0.0
-        self.pattern: list[int] = []
+        self.pattern: deque[int] = deque()
         self.stripCache: dict[int, Surface] = {}
         self._setup()
 
     def _setup(self) -> None:
         colsNeeded = (self.screenW // tileSize) + self.bufferColumns + 2
-        self.pattern = self._generatePattern(colsNeeded)
+        self.pattern = deque(self._generatePattern(colsNeeded))
         self._buildStripCache()
 
     def _generatePattern(self, length: int = 0) -> list[int]:
@@ -95,7 +96,7 @@ class GroundTilemap:
 
         while self.scrollOffset >= tileSize:
             self.scrollOffset -= tileSize
-            self.pattern.pop(0)
+            self.pattern.popleft()
             if self.tileset.tiles:
                 tileIds = list(self.tileset.tiles.keys())
                 self.pattern.append(random.choice(tileIds))
@@ -216,14 +217,14 @@ class CeilingTilemap:
         self.screenW = screenW
         self.ceilingH = ceilingH
         self.scrollOffset: float = 0.0
-        self.pattern: list[CeilingTileData] = []
+        self.pattern: deque[CeilingTileData] = deque()
         self.stripCache: dict[int, Surface] = {}
         self._tilesSinceCage: int = self.minTilesBetweenCages
         self._setup()
 
     def _setup(self) -> None:
         colsNeeded = (self.screenW // tileSize) + self.bufferColumns + 2
-        self.pattern = self._generatePattern(colsNeeded)
+        self.pattern = deque(self._generatePattern(colsNeeded))
         self._buildStripCache()
 
     def _generatePattern(self, length: int = 0) -> list[CeilingTileData]:
@@ -236,11 +237,12 @@ class CeilingTilemap:
 
     def _buildStripCache(self) -> None:
         self.stripCache.clear()
+        bDisplayReady = pygame.display.get_surface() is not None
         for tileId, tile in self.tileset.tiles.items():
             orig = tile.surface
             if orig.get_height() != self.ceilingH:
                 scaled = pygame.transform.scale(orig, (tileSize, self.ceilingH))
-                self.stripCache[tileId] = scaled
+                self.stripCache[tileId] = scaled.convert() if bDisplayReady else scaled
             else:
                 self.stripCache[tileId] = orig
 
@@ -265,7 +267,7 @@ class CeilingTilemap:
 
         while self.scrollOffset >= tileSize:
             self.scrollOffset -= tileSize
-            self.pattern.pop(0)
+            self.pattern.popleft()
             self._appendNewTile()
 
         spawnThreshold = self.screenW + tileSize

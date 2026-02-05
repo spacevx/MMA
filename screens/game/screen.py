@@ -67,6 +67,7 @@ class GameScreen:
         self.bPlayerTackled: bool = False
         self.tackleTimer: float = 0.0
         self.tackleDuration: float = 2.0
+        self._tackledImage: Surface | None = None
 
         self.bPlayerTrapped: bool = False
         self.trappedTimer: float = 0.0
@@ -160,12 +161,14 @@ class GameScreen:
         self.bChaserCatching = False
         self.bPlayerTackled = False
         self.tackleTimer = 0.0
+        self._tackledImage = None
 
         self.bPlayerTrapped = False
         self.trappedTimer = 0.0
         self.trappingCage = None
 
         self.spawner.reset()
+        self.hud.resetGameOverCache()
 
     def handleEvent(self, event: Event, inputEvent: "InputEvent | None" = None) -> None:
         from entities.input.manager import InputEvent, GameAction
@@ -251,6 +254,7 @@ class GameScreen:
                 self.bChaserCatching = False
                 self.bPlayerTackled = True
                 self.tackleTimer = self.tackleDuration
+                self._tackledImage = pygame.transform.rotate(self.localPlayer.image, -90)
 
     def _updateTackled(self, dt: float) -> None:
         self.tackleTimer -= dt
@@ -293,10 +297,9 @@ class GameScreen:
         self.groundTilemap.draw(screen)
         self.obstacles.draw(screen)
 
-        if self.bPlayerTackled:
-            rotatedPlayer = pygame.transform.rotate(self.localPlayer.image, -90)
-            rotatedRect = rotatedPlayer.get_rect(midbottom=(self.localPlayer.rect.centerx, self.groundY))
-            screen.blit(rotatedPlayer, rotatedRect)
+        if self.bPlayerTackled and self._tackledImage:
+            rotatedRect = self._tackledImage.get_rect(midbottom=(self.localPlayer.rect.centerx, self.groundY))
+            screen.blit(self._tackledImage, rotatedRect)
         else:
             screen.blit(self.localPlayer.image, self.localPlayer.rect)
 

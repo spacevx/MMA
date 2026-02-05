@@ -17,7 +17,7 @@ class CageState(Enum):
 
 class FallingCage(BaseObstacle):
     _cageCache: Surface | None = None
-    _chainCache: Surface | None = None
+    _chainCache: dict[int, Surface] = {}
 
     cageWidth: int = 180
     cageHeight: int = 220
@@ -38,6 +38,7 @@ class FallingCage(BaseObstacle):
         self.shakeOffset: float = 0.0
         self.groundedTimer: float = 0.0
         self.fallVelocity: float = 0.0
+        self._warningSurface: Surface | None = None
 
         self.image = self._getCageImage()
         self.rect = self.image.get_rect(midtop=(x, ceilingY))
@@ -47,17 +48,21 @@ class FallingCage(BaseObstacle):
     @classmethod
     def clearCache(cls) -> None:
         cls._cageCache = None
-        cls._chainCache = None
+        cls._chainCache.clear()
 
     @classmethod
     def _getCageImage(cls) -> Surface:
         if cls._cageCache is None:
-            cls._cageCache = cls._createCageSurface()
+            surf = cls._createCageSurface()
+            cls._cageCache = surf.convert_alpha() if pygame.display.get_surface() else surf
         return cls._cageCache
 
     @classmethod
     def _getChainImage(cls, height: int) -> Surface:
-        return cls._createChainSurface(height)
+        if height not in cls._chainCache:
+            surf = cls._createChainSurface(height)
+            cls._chainCache[height] = surf.convert_alpha() if pygame.display.get_surface() else surf
+        return cls._chainCache[height]
 
     @classmethod
     def _createCageSurface(cls) -> Surface:
@@ -142,11 +147,18 @@ class FallingCage(BaseObstacle):
                     self.triggerFall()
 
         elif self.state == CageState.WARNING:
+            if self._warningSurface is None:
+                h = self.groundY - self.rect.bottom
+                if h > 0:
+                    self._warningSurface = pygame.Surface((self.cageWidth + 20, h), pygame.SRCALPHA)
+                    if pygame.display.get_surface():
+                        self._warningSurface = self._warningSurface.convert_alpha()
             self.warningTimer -= dt
             self.shakeOffset = (pygame.time.get_ticks() % 100 - 50) * 0.1
             if self.warningTimer <= 0:
                 self.state = CageState.FALLING
                 self.fallVelocity = 200.0
+                self._warningSurface = None
 
         elif self.state == CageState.FALLING:
             self.fallVelocity += 2000.0 * dt
@@ -184,9 +196,9 @@ class FallingCage(BaseObstacle):
 
         surface.blit(self.image, (drawX, self.rect.y))
 
-        if self.state == CageState.WARNING:
-            warnSurf = pygame.Surface((self.cageWidth + 20, self.groundY - self.rect.bottom), pygame.SRCALPHA)
+        if self.state == CageState.WARNING and self._warningSurface is not None:
             alpha = max(0, min(255, int(80 + 40 * abs(self.shakeOffset))))
             warnColor = (255, 50, 50, alpha)
-            pygame.draw.rect(warnSurf, warnColor, warnSurf.get_rect())
-            surface.blit(warnSurf, (self.rect.x - 10, self.rect.bottom))
+            self._warningSurface.fill((0, 0, 0, 0))
+            pygame.draw.rect(self._warningSurface, warnColor, self._warningSurface.get_rect())
+            surface.blit(self._warningSurface, (self.rect.x - 10, self.rect.bottom))
