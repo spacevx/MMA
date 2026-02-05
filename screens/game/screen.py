@@ -10,6 +10,9 @@ from pygame.sprite import Group
 if TYPE_CHECKING:
     from entities.input.manager import InputEvent
 
+import random
+from enum import Enum, auto
+
 import flags
 from keybindings import keyBindings
 from settings import GameState, ScreenSize, width, height, obstacleSpawnEvent
@@ -26,6 +29,12 @@ from .collision import GameCollision
 
 tilesPath = assetsPath / "tiles" / "ground"
 ceilingTilesPath = assetsPath / "tiles" / "ceiling"
+
+
+class EasterEggMode(Enum):
+    OFF = 0
+    MIRROR = auto()
+    INVERTED = auto()
 
 
 class GameScreen:
@@ -86,6 +95,10 @@ class GameScreen:
 
         self._initTilemap()
         self._initCeilingTilemap()
+
+        self._eeStep: int = 0
+        self._eeHeld: set[str] = set()
+        self._eeMode: EasterEggMode = EasterEggMode.OFF
 
         self.hud = HUD(self.screenSize)
         self.spawner = ObstacleSpawner(self.screenSize, self.groundY, self.scrollSpeed)
@@ -182,6 +195,10 @@ class GameScreen:
         self.bLevelComplete = False
         self.finaleCage = None
 
+        self._eeStep = 0
+        self._eeHeld.clear()
+        self._eeMode = EasterEggMode.OFF
+
         self.spawner.reset()
         self.hud.resetGameOverCache()
 
@@ -201,6 +218,24 @@ class GameScreen:
                 self.localPlayer.handleInput(event, inputEvent)
         elif inputEvent and not self.bGameOver and not self.bLevelComplete:
             self.localPlayer.handleInput(event, inputEvent)
+
+        if inputEvent:
+            name = inputEvent.action.name
+            if inputEvent.bPressed:
+                self._eeHeld.add(name)
+            else:
+                self._eeHeld.discard(name)
+
+            if inputEvent.bPressed:
+                if self._eeStep == 0 and name == "JUMP" and "SLIDE" not in self._eeHeld:
+                    self._eeStep = 1
+                elif self._eeStep == 1 and self._eeHeld >= {"JUMP", "SLIDE"}:
+                    self._eeStep = 2
+                elif self._eeStep == 2 and name == "SLIDE" and "JUMP" not in self._eeHeld:
+                    self._eeMode = random.choice([EasterEggMode.MIRROR, EasterEggMode.INVERTED]) if self._eeMode == EasterEggMode.OFF else EasterEggMode.OFF
+                    self._eeStep = 0
+                elif name not in ("JUMP", "SLIDE"):
+                    self._eeStep = 0
 
         self.spawner.handleEvent(event, self.obstacles, self.bGameOver or self.bFinaleTriggered)
 
@@ -365,6 +400,11 @@ class GameScreen:
             self.finaleCage.draw(screen)
 
         self.hud.draw(screen, self.score, self.bGameOver, self.hitCount, self.maxHits, self.bLevelComplete)
+
+        if self._eeMode == EasterEggMode.MIRROR:
+            screen.blit(pygame.transform.flip(screen, True, False), (0, 0))
+        elif self._eeMode == EasterEggMode.INVERTED:
+            screen.blit(pygame.transform.invert(screen), (0, 0))
 
     def _drawScrollingBackground(self, screen: Surface) -> None:
         x1 = -int(self.scrollX)
