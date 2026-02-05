@@ -1,7 +1,7 @@
 from typing import Final
 
-windowTitle: Final[str] = "MMA"
-menuTitle: Final[str] = "MMA"
+windowTitle: Final[str] = "BSD Runner"
+menuTitle: Final[str] = "BSD Runner"
 btnStart: Final[str] = "COMMENCER LE JEU"
 btnOptions: Final[str] = "OPTIONS"
 btnQuit: Final[str] = "QUITTER"
@@ -33,7 +33,7 @@ gameRestartButton: Final[str] = "Appuyez sur {button} pour recommencer"
 levelComplete: Final[str] = "NIVEAU TERMINÉ!"
 levelCompleteRestart: Final[str] = "Appuyez sur R pour recommencer"
 
-rpcGameName: Final[str] = "MMA"
+rpcGameName: Final[str] = "BSD Runner"
 rpcInMenu: Final[str] = "Dans le menu principal"
 rpcPlaying: Final[str] = "En train de jouer | Score: {score}"
 rpcGameOver: Final[str] = "Game Over | Score Final: {score}"

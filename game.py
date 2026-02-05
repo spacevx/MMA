@@ -10,6 +10,7 @@ from settings import (
 )
 from screens import MainMenu, GameScreen, OptionsScreen
 from discord import DiscordRPC
+from paths import assetsPath
 
 
 class Game:
@@ -18,6 +19,8 @@ class Game:
         pygame.display.set_mode((width, height), 0)
         self.screen: Surface = pygame.display.set_mode((width, height), displayFlags)
         pygame.display.set_caption(title)
+        iconPath = assetsPath / "logo" / "logo_32.ico"
+        pygame.display.set_icon(pygame.image.load(iconPath))
         self.clock: Clock = pygame.time.Clock()
 
         self.screenSize: ScreenSize = (width, height)

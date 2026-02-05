@@ -360,7 +360,7 @@ class MainMenu:
     def _drawTitle(self, surf: Surface) -> None:
         w, h = self.screenSize
         cx, ty = w // 2, int(h * 0.18)
-        text = "MMA"
+        text = "BSD Runner"
         pulse = 0.9 + 0.1 * math.sin(self.titlePulse)
 
         for offset in range(self._s(20), 0, -2):
