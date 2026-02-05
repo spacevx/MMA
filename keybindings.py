@@ -19,11 +19,13 @@ class KeyBindings:
     def _init(self) -> None:
         self.jump: int = pygame.K_UP
         self.slide: int = pygame.K_DOWN
-        self._defaults: dict[str, int] = {"jump": pygame.K_UP, "slide": pygame.K_DOWN}
+        self.restart: int = pygame.K_r
+        self._defaults: dict[str, int] = {"jump": pygame.K_UP, "slide": pygame.K_DOWN, "restart": pygame.K_r}
 
     def reset(self) -> None:
         self.jump = self._defaults["jump"]
         self.slide = self._defaults["slide"]
+        self.restart = self._defaults["restart"]
 
     def getKeyName(self, key: int) -> str:
         return pygame.key.name(key).upper()
@@ -45,7 +47,7 @@ class KeyBindings:
             return GameAction.JUMP
         elif key == pygame.K_s:
             return GameAction.SLIDE
-        elif key == pygame.K_r:
+        elif key == self.restart:
             return GameAction.RESTART
         elif key == pygame.K_ESCAPE:
             return GameAction.PAUSE

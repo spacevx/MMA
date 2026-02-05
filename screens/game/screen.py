@@ -11,6 +11,7 @@ if TYPE_CHECKING:
     from entities.input.manager import InputEvent
 
 import flags
+from keybindings import keyBindings
 from settings import GameState, ScreenSize, width, height, obstacleSpawnEvent
 from entities import (
     Player, Chaser, Obstacle, FallingCage, Ceiling,
@@ -194,7 +195,7 @@ class GameScreen:
                 return
 
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_r and bCanRestart:
+            if event.key == keyBindings.restart and bCanRestart:
                 self.reset()
             elif not self.bGameOver and not self.bLevelComplete:
                 self.localPlayer.handleInput(event, inputEvent)

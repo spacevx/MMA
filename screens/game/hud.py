@@ -319,19 +319,20 @@ class HUD:
         surf.blit(scoreShadow, scoreSurf.get_rect(center=(cx + self._s(2), cy + self._s(2))))
         surf.blit(scoreSurf, scoreRect)
 
+        restartKeyName = keyBindings.getKeyName(keyBindings.restart)
         if curSource == InputSource.JOYSTICK:
             restartBtn = JoyBindings().getButtonForAction(GameAction.RESTART)
             if restartBtn is not None:
                 restartText = gameRestartButton.format(button=self.joyIcons.getButtonName(restartBtn))
             else:
-                restartText = gameRestartKey
+                restartText = gameRestartKey.format(key=restartKeyName)
             menuBtn = JoyBindings().getButtonForAction(GameAction.MENU_BACK)
             if menuBtn is not None:
                 menuText = gameOverMenuButton.format(button=self.joyIcons.getButtonName(menuBtn))
             else:
                 menuText = gameOverMenuKey
         else:
-            restartText = gameRestartKey
+            restartText = gameRestartKey.format(key=restartKeyName)
             menuText = gameOverMenuKey
 
         restartSurf = self.smallFont.render(restartText, True, white)
@@ -429,19 +430,20 @@ class HUD:
         surf.blit(scoreShadow, scoreSurf.get_rect(center=(cx + self._s(2), cy + self._s(2))))
         surf.blit(scoreSurf, scoreRect)
 
+        restartKeyName = keyBindings.getKeyName(keyBindings.restart)
         if curSource == InputSource.JOYSTICK:
             restartBtn = JoyBindings().getButtonForAction(GameAction.RESTART)
             if restartBtn is not None:
                 restartText = gameRestartButton.format(button=self.joyIcons.getButtonName(restartBtn))
             else:
-                restartText = levelCompleteRestart
+                restartText = levelCompleteRestart.format(key=restartKeyName)
             menuBtn = JoyBindings().getButtonForAction(GameAction.MENU_BACK)
             if menuBtn is not None:
                 menuText = gameOverMenuButton.format(button=self.joyIcons.getButtonName(menuBtn))
             else:
                 menuText = gameOverMenuKey
         else:
-            restartText = levelCompleteRestart
+            restartText = levelCompleteRestart.format(key=restartKeyName)
             menuText = gameOverMenuKey
 
         restartSurf = self.smallFont.render(restartText, True, white)
