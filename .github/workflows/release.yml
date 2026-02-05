@@ -62,7 +62,7 @@ jobs:
         run: pyinstaller build.spec
 
       - name: Zip distribution
-        run: Compress-Archive -Path dist/MMA/* -DestinationPath dist/MMA.zip
+        run: Compress-Archive -Path "dist/BSD Runner/*" -DestinationPath dist/MMA.zip
 
       - name: Create Release
         uses: softprops/action-gh-release@v2
