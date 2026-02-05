@@ -1,71 +1,74 @@
 import pygame
 from pygame import Surface
-from pathlib import Path
 
 from paths import assetsPath
 
-keysPath = assetsPath / "tiles" / "keys"
+keysPath = assetsPath / "tiles" / "keyboard"
 
-_cache: dict[int, Surface] = {}
-_scaledCache: dict[tuple[int, int], Surface] = {}
+_cache: dict[str, Surface] = {}
+_scaledCache: dict[tuple[str, int], Surface] = {}
 
-_TILE_MAP: dict[int, int] = {
-    pygame.K_0: 94, pygame.K_1: 95, pygame.K_2: 96, pygame.K_3: 97, pygame.K_4: 98,
-    pygame.K_5: 99, pygame.K_6: 100, pygame.K_7: 101, pygame.K_8: 102, pygame.K_9: 103,
+_NAME_MAP: dict[int, str] = {
+    pygame.K_a: "a", pygame.K_b: "b", pygame.K_c: "c", pygame.K_d: "d", pygame.K_e: "e",
+    pygame.K_f: "f", pygame.K_g: "g", pygame.K_h: "h", pygame.K_i: "i", pygame.K_j: "j",
+    pygame.K_k: "k", pygame.K_l: "l", pygame.K_m: "m", pygame.K_n: "n", pygame.K_o: "o",
+    pygame.K_p: "p", pygame.K_q: "q", pygame.K_r: "r", pygame.K_s: "s", pygame.K_t: "t",
+    pygame.K_u: "u", pygame.K_v: "v", pygame.K_w: "w", pygame.K_x: "x", pygame.K_y: "y",
+    pygame.K_z: "z",
 
-    pygame.K_a: 110, pygame.K_b: 111, pygame.K_c: 112, pygame.K_d: 113, pygame.K_e: 114,
-    pygame.K_f: 115, pygame.K_g: 116, pygame.K_h: 117, pygame.K_i: 118, pygame.K_j: 119,
-    pygame.K_k: 120, pygame.K_l: 121, pygame.K_m: 122, pygame.K_n: 123, pygame.K_o: 124,
-    pygame.K_p: 125, pygame.K_q: 126, pygame.K_r: 127, pygame.K_s: 128, pygame.K_t: 129,
-    pygame.K_u: 130, pygame.K_v: 131, pygame.K_w: 132, pygame.K_x: 133, pygame.K_y: 134,
-    pygame.K_z: 135,
+    pygame.K_0: "0", pygame.K_1: "1", pygame.K_2: "2", pygame.K_3: "3", pygame.K_4: "4",
+    pygame.K_5: "5", pygame.K_6: "6", pygame.K_7: "7", pygame.K_8: "8", pygame.K_9: "9",
 
-    pygame.K_UP: 188, pygame.K_DOWN: 190, pygame.K_LEFT: 192, pygame.K_RIGHT: 194,
+    pygame.K_UP: "arrow_up", pygame.K_DOWN: "arrow_down",
+    pygame.K_LEFT: "arrow_left", pygame.K_RIGHT: "arrow_right",
 
-    pygame.K_SPACE: 235,
-    pygame.K_RETURN: 200,
-    pygame.K_ESCAPE: 201,
-    pygame.K_TAB: 189,
-    pygame.K_BACKSPACE: 191,
-    pygame.K_DELETE: 198,
-    pygame.K_INSERT: 199,
-    pygame.K_HOME: 199,
-    pygame.K_END: 199,
+    pygame.K_SPACE: "space", pygame.K_RETURN: "return", pygame.K_ESCAPE: "escape",
+    pygame.K_TAB: "tab", pygame.K_BACKSPACE: "backspace", pygame.K_DELETE: "delete",
+    pygame.K_INSERT: "insert", pygame.K_HOME: "home", pygame.K_END: "end",
+    pygame.K_PAGEUP: "page_up", pygame.K_PAGEDOWN: "page_down",
 
-    pygame.K_LSHIFT: 234, pygame.K_RSHIFT: 234,
-    pygame.K_LCTRL: 197, pygame.K_RCTRL: 197,
-    pygame.K_LALT: 187, pygame.K_RALT: 187,
-    pygame.K_CAPSLOCK: 196,
+    pygame.K_LSHIFT: "shift", pygame.K_RSHIFT: "shift",
+    pygame.K_LCTRL: "ctrl", pygame.K_RCTRL: "ctrl",
+    pygame.K_LALT: "alt", pygame.K_RALT: "alt",
+    pygame.K_CAPSLOCK: "capslock",
 
-    pygame.K_F1: 202, pygame.K_F2: 203, pygame.K_F3: 202, pygame.K_F4: 203,
-    pygame.K_F5: 202, pygame.K_F6: 203, pygame.K_F7: 202, pygame.K_F8: 203,
-    pygame.K_F9: 202, pygame.K_F10: 203, pygame.K_F11: 202, pygame.K_F12: 203,
+    pygame.K_F1: "f1", pygame.K_F2: "f2", pygame.K_F3: "f3", pygame.K_F4: "f4",
+    pygame.K_F5: "f5", pygame.K_F6: "f6", pygame.K_F7: "f7", pygame.K_F8: "f8",
+    pygame.K_F9: "f9", pygame.K_F10: "f10", pygame.K_F11: "f11", pygame.K_F12: "f12",
+
+    pygame.K_MINUS: "minus", pygame.K_EQUALS: "equals", pygame.K_PERIOD: "period",
+    pygame.K_COMMA: "comma", pygame.K_SEMICOLON: "semicolon",
+    pygame.K_SLASH: "slash_forward", pygame.K_BACKSLASH: "slash_back",
+    pygame.K_LEFTBRACKET: "bracket_open", pygame.K_RIGHTBRACKET: "bracket_close",
+    pygame.K_QUOTE: "quote", pygame.K_BACKQUOTE: "tilde",
+    pygame.K_KP_ENTER: "numpad_enter", pygame.K_NUMLOCKCLEAR: "numlock",
+    pygame.K_PRINTSCREEN: "printscreen",
 }
 
 
-def _loadTile(tileIdx: int) -> Surface | None:
-    if tileIdx in _cache:
-        return _cache[tileIdx]
+def _loadIcon(name: str) -> Surface | None:
+    if name in _cache:
+        return _cache[name]
 
-    path = keysPath / f"tile_{tileIdx:04d}.png"
+    path = keysPath / f"keyboard_{name}.png"
     if not path.exists():
         return None
 
     surf = pygame.image.load(str(path)).convert_alpha()
-    _cache[tileIdx] = surf
+    _cache[name] = surf
     return surf
 
 
 def getKeyIcon(key: int, size: int = 32) -> Surface | None:
-    tileIdx = _TILE_MAP.get(key)
-    if tileIdx is None:
+    name = _NAME_MAP.get(key)
+    if name is None:
         return None
 
-    cacheKey = (tileIdx, size)
+    cacheKey = (name, size)
     if cacheKey in _scaledCache:
         return _scaledCache[cacheKey]
 
-    base = _loadTile(tileIdx)
+    base = _loadIcon(name)
     if base is None:
         return None
 
@@ -75,7 +78,7 @@ def getKeyIcon(key: int, size: int = 32) -> Surface | None:
 
 
 def hasIcon(key: int) -> bool:
-    return key in _TILE_MAP
+    return key in _NAME_MAP
 
 
 def clearCache() -> None:
