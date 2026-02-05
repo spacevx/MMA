@@ -145,7 +145,7 @@ class Chaser(AnimatedSprite):
         return None
 
     def _shouldJumpOff(self) -> bool:
-        if self.currentCage is None:
+        if self.currentCage is None or not self.currentCage.alive():
             return True
 
         chaserX = self.rect.centerx
@@ -195,7 +195,7 @@ class Chaser(AnimatedSprite):
                 self.state = ChaserState.RUNNING
 
         elif self.state == ChaserState.ON_CAGE:
-            if self.currentCage:
+            if self.currentCage and self.currentCage.alive():
                 self.posY = float(self.currentCage.rect.top)
                 self.rect.bottom = self.currentCage.rect.top
 
