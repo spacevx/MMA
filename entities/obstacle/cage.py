@@ -3,8 +3,12 @@ from enum import Enum, auto
 import pygame
 from pygame import Surface, Rect
 
+from paths import assetsPath
 from settings import Color
 from .base import BaseObstacle
+
+cageFallSoundPath = assetsPath / "songs" / "metal3.ogg"
+_cageFallSound: pygame.mixer.Sound | None = None
 
 
 class CageState(Enum):
@@ -167,9 +171,13 @@ class FallingCage(BaseObstacle):
             self.rect.y += int(self.fallVelocity * dt)
 
             if self.rect.bottom >= self.groundY:
+                global _cageFallSound
                 self.rect.bottom = self.groundY
                 self.state = CageState.GROUNDED
                 self.groundedTimer = self.groundedDuration
+                if _cageFallSound is None:
+                    _cageFallSound = pygame.mixer.Sound(cageFallSoundPath)
+                _cageFallSound.play()
 
         elif self.state == CageState.GROUNDED:
             self.groundedTimer -= dt
