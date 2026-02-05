@@ -18,6 +18,12 @@ from strings import (
 from screens.menu_bg import MenuBackground
 from screens.ui import ModernButton
 
+_bindingDefs: list[tuple[str, str]] = [
+    (optionsJump, "jump"),
+    (optionsSlide, "slide"),
+    (optionsRestart, "restart"),
+]
+
 
 class OptionsScreen:
     baseW: int = 1920
@@ -36,21 +42,16 @@ class OptionsScreen:
         self.labelFont: Font = pygame.font.Font(None, self._s(32))
 
         self.iconSize: int = self._s(50)
-        self.jumpIcon: Surface | None = None
-        self.slideIcon: Surface | None = None
-        self.restartIcon: Surface | None = None
-        self.jumpIconRect: pygame.Rect = pygame.Rect(0, 0, 0, 0)
-        self.slideIconRect: pygame.Rect = pygame.Rect(0, 0, 0, 0)
-        self.restartIconRect: pygame.Rect = pygame.Rect(0, 0, 0, 0)
-        self.bJumpHovered: bool = False
-        self.bSlideHovered: bool = False
-        self.bRestartHovered: bool = False
+        self._icons: list[Surface | None] = [None] * len(_bindingDefs)
+        self._iconRects: list[pygame.Rect] = [pygame.Rect(0, 0, 0, 0) for _ in _bindingDefs]
+        self._hovered: list[bool] = [False] * len(_bindingDefs)
+        self._listeningIdx: int = -1
 
         self.resetBtn: ModernButton
         self.backBtn: ModernButton
 
         self._loadKeyIcons()
-        self._updateIconRects()
+        self._computeLayout()
         self._createActionButtons()
 
         self.titleFont: Font = pygame.font.Font(None, self._s(120))
@@ -59,25 +60,39 @@ class OptionsScreen:
         self.time: float = 0.0
         self.titlePulse: float = 0.0
 
-        self.bListeningJump: bool = False
-        self.bListeningSlide: bool = False
-        self.bListeningRestart: bool = False
-
     def _s(self, val: int) -> int:
         return max(1, int(val * self.scale))
 
-    def _getKeyIconRects(self) -> tuple[pygame.Rect, pygame.Rect, pygame.Rect]:
+    def _computeLayout(self) -> None:
         w, h = self.screenSize
         cx = w // 2
-        baseY = int(h * 0.42)
-        gap = self._s(70)
-        sz = self.iconSize
-        labelOffset = self._s(120)
 
-        jumpRect = pygame.Rect(cx + labelOffset - sz // 2, baseY + self._s(25) - sz // 2, sz, sz)
-        slideRect = pygame.Rect(cx + labelOffset - sz // 2, baseY + gap + self._s(25) - sz // 2, sz, sz)
-        restartRect = pygame.Rect(cx + labelOffset - sz // 2, baseY + gap * 2 + self._s(25) - sz // 2, sz, sz)
-        return jumpRect, slideRect, restartRect
+        labels = [self.labelFont.render(label, True, (240, 240, 245)) for label, _ in _bindingDefs]
+        maxLabelW = max(l.get_width() for l in labels)
+
+        rowH = self._s(60)
+        iconGap = self._s(30)
+        padX = self._s(50)
+        headerH = self._s(65)
+        padBottom = self._s(20)
+
+        contentW = maxLabelW + iconGap + self.iconSize
+        self._panelW = contentW + padX * 2
+        self._panelH = headerH + len(_bindingDefs) * rowH + padBottom
+        self._panelX = cx - self._panelW // 2
+        self._panelY = int(h * 0.35)
+
+        self._labelX = self._panelX + padX
+        iconCenterX = self._labelX + maxLabelW + iconGap + self.iconSize // 2
+
+        self._rowCentersY: list[int] = []
+        for i in range(len(_bindingDefs)):
+            rowCY = self._panelY + headerH + i * rowH + rowH // 2
+            self._rowCentersY.append(rowCY)
+            sz = self.iconSize
+            self._iconRects[i] = pygame.Rect(
+                iconCenterX - sz // 2, rowCY - sz // 2, sz, sz
+            )
 
     def _getActionButtonRects(self) -> tuple[pygame.Rect, pygame.Rect]:
         w, h = self.screenSize
@@ -91,23 +106,17 @@ class OptionsScreen:
         return resetRect, backRect
 
     def _loadKeyIcons(self) -> None:
-        self.jumpIcon = keyBindings.getKeyIcon(keyBindings.jump, self.iconSize)
-        self.slideIcon = keyBindings.getKeyIcon(keyBindings.slide, self.iconSize)
-        self.restartIcon = keyBindings.getKeyIcon(keyBindings.restart, self.iconSize)
-
-    def _updateIconRects(self) -> None:
-        self.jumpIconRect, self.slideIconRect, self.restartIconRect = self._getKeyIconRects()
+        for i, (_, attr) in enumerate(_bindingDefs):
+            key: int = getattr(keyBindings, attr)
+            self._icons[i] = keyBindings.getKeyIcon(key, self.iconSize)
 
     def _createActionButtons(self) -> None:
         resetRect, backRect = self._getActionButtonRects()
         self.resetBtn = ModernButton(resetRect, optionsReset, self.buttonFont)
         self.backBtn = ModernButton(backRect, optionsBack, self.buttonFont)
 
-    def _updateKeyIcons(self) -> None:
-        self._loadKeyIcons()
-
     def _updateButtonPositions(self) -> None:
-        self._updateIconRects()
+        self._computeLayout()
         resetRect, backRect = self._getActionButtonRects()
 
         for btn, rect in [(self.resetBtn, resetRect), (self.backBtn, backRect)]:
@@ -115,11 +124,11 @@ class OptionsScreen:
             btn.setDimensions(rect.width, rect.height)
 
     def _buildPanelSurf(self) -> None:
-        panelW, panelH = self._s(600), self._s(340)
-        surf = pygame.Surface((panelW, panelH), pygame.SRCALPHA)
+        pw, ph = self._panelW, self._panelH
+        surf = pygame.Surface((pw, ph), pygame.SRCALPHA)
         cr = self._s(12)
-        pygame.draw.rect(surf, (15, 17, 24, 200), (0, 0, panelW, panelH), border_radius=cr)
-        pygame.draw.rect(surf, (45, 48, 60), (0, 0, panelW, panelH), 1, border_radius=cr)
+        pygame.draw.rect(surf, (15, 17, 24, 200), (0, 0, pw, ph), border_radius=cr)
+        pygame.draw.rect(surf, (45, 48, 60), (0, 0, pw, ph), 1, border_radius=cr)
         self.panelSurf = surf
 
     def _drawTitle(self, surf: Surface) -> None:
@@ -145,19 +154,16 @@ class OptionsScreen:
         surf.blit(titleSurf, titleRect)
 
     def _drawControlsPanel(self, surf: Surface) -> None:
-        w, h = self.screenSize
+        w = self.screenSize[0]
         cx = w // 2
 
         if self.panelSurf is None:
             self._buildPanelSurf()
 
         assert self.panelSurf is not None
-        panelW, panelH = self.panelSurf.get_size()
-        panelX = cx - panelW // 2
-        panelY = int(h * 0.35)
-        surf.blit(self.panelSurf, (panelX, panelY))
+        surf.blit(self.panelSurf, (self._panelX, self._panelY))
 
-        sectionY = int(h * 0.38)
+        sectionY = self._panelY + self._s(30)
         glowSurf = self.sectionFont.render(optionsControls, True, (255, 215, 0))
         glowSurf.set_alpha(40)
         for dx, dy in [(-2, 0), (2, 0), (0, -2), (0, 2)]:
@@ -167,31 +173,19 @@ class OptionsScreen:
         sectionRect = sectionSurf.get_rect(center=(cx, sectionY))
         surf.blit(sectionSurf, sectionRect)
 
-        baseY = int(h * 0.42)
-        gap = self._s(70)
-        labelX = cx - self._s(120)
+        for i, (label, attr) in enumerate(_bindingDefs):
+            rowCY = self._rowCentersY[i]
 
-        jumpLabelSurf = self.labelFont.render(optionsJump, True, (240, 240, 245))
-        jumpLabelRect = jumpLabelSurf.get_rect(midright=(labelX, baseY + self._s(25)))
-        surf.blit(jumpLabelSurf, jumpLabelRect)
+            labelSurf = self.labelFont.render(label, True, (240, 240, 245))
+            labelRect = labelSurf.get_rect(midleft=(self._labelX, rowCY))
+            surf.blit(labelSurf, labelRect)
 
-        slideLabelSurf = self.labelFont.render(optionsSlide, True, (240, 240, 245))
-        slideLabelRect = slideLabelSurf.get_rect(midright=(labelX, baseY + gap + self._s(25)))
-        surf.blit(slideLabelSurf, slideLabelRect)
-
-        restartLabelSurf = self.labelFont.render(optionsRestart, True, (240, 240, 245))
-        restartLabelRect = restartLabelSurf.get_rect(midright=(labelX, baseY + gap * 2 + self._s(25)))
-        surf.blit(restartLabelSurf, restartLabelRect)
-
-        self._drawKeyIcon(surf, self.jumpIcon, self.jumpIconRect,
-                          self.bListeningJump, self.bJumpHovered,
-                          keyBindings.getKeyName(keyBindings.jump))
-        self._drawKeyIcon(surf, self.slideIcon, self.slideIconRect,
-                          self.bListeningSlide, self.bSlideHovered,
-                          keyBindings.getKeyName(keyBindings.slide))
-        self._drawKeyIcon(surf, self.restartIcon, self.restartIconRect,
-                          self.bListeningRestart, self.bRestartHovered,
-                          keyBindings.getKeyName(keyBindings.restart))
+            key: int = getattr(keyBindings, attr)
+            self._drawKeyIcon(
+                surf, self._icons[i], self._iconRects[i],
+                self._listeningIdx == i, self._hovered[i],
+                keyBindings.getKeyName(key),
+            )
 
     def _drawKeyIcon(self, surf: Surface, icon: Surface | None, rect: pygame.Rect,
                       bListening: bool, bHovered: bool, fallbackText: str) -> None:
@@ -228,49 +222,33 @@ class OptionsScreen:
         self.menuBg.onResize(newSize)
         self.panelSurf = None
         self._updateButtonPositions()
-        self._updateKeyIcons()
+        self._loadKeyIcons()
         self.titleFont = pygame.font.Font(None, self._s(120))
         self.sectionFont = pygame.font.Font(None, self._s(48))
 
     def handleEvent(self, event: Event, inputEvent: "InputEvent | None" = None) -> None:
-        if self.bListeningJump or self.bListeningSlide or self.bListeningRestart:
+        if self._listeningIdx >= 0:
             if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_ESCAPE:
-                    self.bListeningJump = False
-                    self.bListeningSlide = False
-                    self.bListeningRestart = False
-                else:
-                    if self.bListeningJump:
-                        keyBindings.jump = event.key
-                        self.bListeningJump = False
-                    elif self.bListeningSlide:
-                        keyBindings.slide = event.key
-                        self.bListeningSlide = False
-                    elif self.bListeningRestart:
-                        keyBindings.restart = event.key
-                        self.bListeningRestart = False
-                self._updateKeyIcons()
+                if event.key != pygame.K_ESCAPE:
+                    attr = _bindingDefs[self._listeningIdx][1]
+                    setattr(keyBindings, attr, event.key)
+                self._listeningIdx = -1
+                self._loadKeyIcons()
                 return
 
         if event.type == pygame.MOUSEMOTION:
-            self.bJumpHovered = self.jumpIconRect.collidepoint(event.pos)
-            self.bSlideHovered = self.slideIconRect.collidepoint(event.pos)
-            self.bRestartHovered = self.restartIconRect.collidepoint(event.pos)
+            for i, rect in enumerate(self._iconRects):
+                self._hovered[i] = rect.collidepoint(event.pos)
 
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
-            if self.jumpIconRect.collidepoint(event.pos):
-                self.bListeningJump = True
-                return
-            if self.slideIconRect.collidepoint(event.pos):
-                self.bListeningSlide = True
-                return
-            if self.restartIconRect.collidepoint(event.pos):
-                self.bListeningRestart = True
-                return
+            for i, rect in enumerate(self._iconRects):
+                if rect.collidepoint(event.pos):
+                    self._listeningIdx = i
+                    return
 
         if self.resetBtn.handleEvent(event):
             keyBindings.reset()
-            self._updateKeyIcons()
+            self._loadKeyIcons()
         elif self.backBtn.handleEvent(event):
             self.setState(GameState.MENU)
 
