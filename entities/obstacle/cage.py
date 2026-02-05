@@ -34,6 +34,7 @@ class FallingCage(BaseObstacle):
         self.ceilingY = ceilingY
         self.groundY = groundY
 
+        self.bScored: bool = False
         self.warningTimer: float = 0.0
         self.shakeOffset: float = 0.0
         self.groundedTimer: float = 0.0

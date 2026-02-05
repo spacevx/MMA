@@ -16,6 +16,7 @@ from entities import (
     Player, Chaser, Obstacle, FallingCage, Ceiling,
     TileSet, GroundTilemap, CeilingTileSet, CeilingTilemap
 )
+from entities.obstacle.cage import CageState
 from paths import assetsPath, screensPath
 
 from .hud import HUD
@@ -31,6 +32,8 @@ class GameScreen:
     baseH: int = 720
     scrollSpeedConst: float = 400.0
     groundRatio: float = 1.0
+    laneDodgeScore: int = 100
+    cageDodgeScore: int = 150
 
     def __init__(self, setStateCallback: Callable[[GameState], None]) -> None:
         self.setState = setStateCallback
@@ -73,6 +76,12 @@ class GameScreen:
         self.trappedTimer: float = 0.0
         self.trappedDuration: float = 4.0
         self.trappingCage: FallingCage | None = None
+
+        self.finaleScore: int = 500
+        self.bFinaleTriggered: bool = False
+        self.bChaserTrapped: bool = False
+        self.bLevelComplete: bool = False
+        self.finaleCage: FallingCage | None = None
 
         self._initTilemap()
         self._initCeilingTilemap()
@@ -167,29 +176,35 @@ class GameScreen:
         self.trappedTimer = 0.0
         self.trappingCage = None
 
+        self.bFinaleTriggered = False
+        self.bChaserTrapped = False
+        self.bLevelComplete = False
+        self.finaleCage = None
+
         self.spawner.reset()
         self.hud.resetGameOverCache()
 
     def handleEvent(self, event: Event, inputEvent: "InputEvent | None" = None) -> None:
         from entities.input.manager import InputEvent, GameAction
 
+        bCanRestart = self.bGameOver or self.bLevelComplete
         if inputEvent:
-            if inputEvent.action == GameAction.RESTART and inputEvent.bPressed and self.bGameOver:
+            if inputEvent.action == GameAction.RESTART and inputEvent.bPressed and bCanRestart:
                 self.reset()
                 return
 
         if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_r and self.bGameOver:
+            if event.key == pygame.K_r and bCanRestart:
                 self.reset()
-            elif not self.bGameOver:
+            elif not self.bGameOver and not self.bLevelComplete:
                 self.localPlayer.handleInput(event, inputEvent)
-        elif inputEvent and not self.bGameOver:
+        elif inputEvent and not self.bGameOver and not self.bLevelComplete:
             self.localPlayer.handleInput(event, inputEvent)
 
-        self.spawner.handleEvent(event, self.obstacles, self.bGameOver)
+        self.spawner.handleEvent(event, self.obstacles, self.bGameOver or self.bFinaleTriggered)
 
     def update(self, dt: float) -> None:
-        if self.bGameOver:
+        if self.bGameOver or self.bLevelComplete:
             return
 
         if self.bPlayerTrapped:
@@ -213,9 +228,10 @@ class GameScreen:
 
         self.groundTilemap.update(scrollDelta)
         cageXs = self.ceilingTilemap.update(scrollDelta)
-        for cx in cageXs:
-            if self.spawner.canSpawnCage():
-                self.spawner.spawnCageAt(cx, self.ceiling.height, self.fallingCages)
+        if not self.bFinaleTriggered:
+            for cx in cageXs:
+                if self.spawner.canSpawnCage():
+                    self.spawner.spawnCageAt(cx, self.ceiling.height, self.fallingCages)
 
         self.score += int(self.scrollSpeed * dt * 0.1 * slowMult)
 
@@ -233,6 +249,29 @@ class GameScreen:
             cage.update(dt, playerX)
 
         self._handleCollisions()
+        self._checkDodgeScore()
+        self._updateFinale(dt)
+
+    def _updateFinale(self, dt: float) -> None:
+        if not self.bFinaleTriggered and self.score >= self.finaleScore and self.chaser:
+            self.bFinaleTriggered = True
+            pygame.time.set_timer(obstacleSpawnEvent, 0)
+            cage = FallingCage(int(self.chaser.rect.centerx), self.ceiling.height, self.groundY, 0.0)
+            cage.triggerFall()
+            self.finaleCage = cage
+
+        if self.finaleCage and not self.bChaserTrapped:
+            self.finaleCage.update(dt)
+            if self.chaser:
+                self.finaleCage.rect.centerx = self.chaser.rect.centerx
+                self.finaleCage.chainRect.centerx = self.chaser.rect.centerx
+
+            if self.finaleCage.state in (CageState.FALLING, CageState.GROUNDED) and self.chaser:
+                if self.finaleCage.rect.bottom >= self.chaser.rect.top:
+                    self.chaser.trap()
+                    self.finaleCage.rect.bottom = self.groundY
+                    self.bChaserTrapped = True
+                    self.bLevelComplete = True
 
     def _updateTrapped(self, dt: float) -> None:
         self.trappedTimer -= dt
@@ -275,7 +314,7 @@ class GameScreen:
             self.slowdownTimer = self.slowdownDuration
             if self.chaser:
                 self.chaser.onPlayerHit()
-            if self.hitCount >= self.maxHits and self.chaser:
+            if self.hitCount >= self.maxHits and self.chaser and not self.bFinaleTriggered:
                 self.bChaserCatching = True
                 self.chaser.startCatching(self.localPlayer.rect.centerx)
                 pygame.time.set_timer(obstacleSpawnEvent, 0)
@@ -291,6 +330,18 @@ class GameScreen:
         if result.bCaught:
             self.bGameOver = True
             pygame.time.set_timer(obstacleSpawnEvent, 0)
+
+    def _checkDodgeScore(self) -> None:
+        playerLeft = self.localPlayer.rect.left
+        for obstacle in self.obstacles:
+            if not obstacle.bScored and obstacle.rect.right < playerLeft:
+                obstacle.bScored = True
+                self.score += self.laneDodgeScore
+
+        for cage in self.fallingCages:
+            if not cage.bScored and cage.state == CageState.GROUNDED:
+                cage.bScored = True
+                self.score += self.cageDodgeScore
 
     def draw(self, screen: Surface) -> None:
         self._drawScrollingBackground(screen)
@@ -309,8 +360,10 @@ class GameScreen:
 
         for cage in self.fallingCages:
             cage.draw(screen)
+        if self.finaleCage:
+            self.finaleCage.draw(screen)
 
-        self.hud.draw(screen, self.score, self.bGameOver, self.hitCount, self.maxHits)
+        self.hud.draw(screen, self.score, self.bGameOver, self.hitCount, self.maxHits, self.bLevelComplete)
 
     def _drawScrollingBackground(self, screen: Surface) -> None:
         x1 = -int(self.scrollX)

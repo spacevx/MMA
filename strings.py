@@ -30,6 +30,9 @@ gameOver: Final[str] = "ATTRAPÉ!"
 gameRestartKey: Final[str] = "Appuyez sur R pour recommencer"
 gameRestartButton: Final[str] = "Appuyez sur {button} pour recommencer"
 
+levelComplete: Final[str] = "NIVEAU TERMINÉ!"
+levelCompleteRestart: Final[str] = "Appuyez sur R pour recommencer"
+
 rpcGameName: Final[str] = "MMA"
 rpcInMenu: Final[str] = "Dans le menu principal"
 rpcPlaying: Final[str] = "En train de jouer | Score: {score}"

@@ -20,6 +20,7 @@ class ChaserState(Enum):
     ON_CAGE = auto()
     JUMPING_OFF = auto()
     CATCHING = auto()
+    TRAPPED = auto()
 
 
 class Chaser(AnimatedSprite):
@@ -98,6 +99,14 @@ class Chaser(AnimatedSprite):
             self.velocityY = self.jumpForce
             self.state = ChaserState.JUMPING
             self.bOnGround = False
+
+    def trap(self) -> None:
+        self.state = ChaserState.TRAPPED
+        self.velocityY = 0.0
+        self.posY = float(self.groundY)
+        self.rect.bottom = self.groundY
+        self.bOnGround = True
+        self._setFrames(self.runningFrames)
 
     def _jumpOff(self) -> None:
         self._setFrames(self.jumpingFrames)
@@ -218,6 +227,9 @@ class Chaser(AnimatedSprite):
         elif self.state == ChaserState.CATCHING:
             self.posX += self.catchingSpeed * dt
             self.rect.midbottom = (int(self.posX), self.groundY)
+            return
+
+        elif self.state == ChaserState.TRAPPED:
             return
 
         if (diff := self.targetX - self.posX) > 0:

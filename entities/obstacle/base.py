@@ -13,6 +13,7 @@ class BaseObstacle(Sprite):
     def __init__(self) -> None:
         super().__init__()
         self.speed = 400.0
+        self.bScored: bool = False
 
     @abstractmethod
     def getHitbox(self) -> Rect:

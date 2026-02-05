@@ -4,7 +4,7 @@ from pygame.font import Font
 
 from keybindings import keyBindings
 from settings import ScreenSize, white, gold
-from strings import gameOver, gameRestartKey, gameRestartButton, hudJump, hudSlide
+from strings import gameOver, gameRestartKey, gameRestartButton, hudJump, hudSlide, levelComplete, levelCompleteRestart
 
 
 class HUD:
@@ -36,6 +36,9 @@ class HUD:
         self._gameOverSurf: Surface | None = None
         self._gameOverScore: int = -1
         self._gameOverInputSource: object = None
+
+        self._levelCompleteSurf: Surface | None = None
+        self._levelCompleteScore: int = -1
 
     def _s(self, val: int) -> int:
         return max(1, int(val * self.scale))
@@ -69,6 +72,8 @@ class HUD:
         self._gameOverSurf = None
         self._gameOverScore = -1
         self._gameOverInputSource = None
+        self._levelCompleteSurf = None
+        self._levelCompleteScore = -1
 
     def _drawTextWithShadow(self, screen: Surface, text: str, font: Font,
                             color: tuple[int, int, int], pos: tuple[int, int],
@@ -395,9 +400,58 @@ class HUD:
         y = self._s(25)
         screen.blit(self._cachedHitSurf, (x - self._s(10), y - self._s(10)))
 
-    def draw(self, screen: Surface, score: int, bGameOver: bool, hitCount: int = 0, maxHits: int = 3) -> None:
+    def drawLevelComplete(self, screen: Surface, score: int) -> None:
+        if self._levelCompleteSurf is not None and self._levelCompleteScore == score:
+            screen.blit(self._levelCompleteSurf, (0, 0))
+            return
+
+        self._levelCompleteScore = score
+        w, h = self.screenSize
+        self._levelCompleteSurf = pygame.Surface((w, h), pygame.SRCALPHA)
+        surf = self._levelCompleteSurf
+        surf.fill((0, 0, 0, 180))
+
+        cx, cy = w // 2, h // 2
+        green = (50, 220, 80)
+        darkGreen = (20, 100, 40)
+
+        panelW, panelH = self._s(600), self._s(350)
+        panel = pygame.Surface((panelW, panelH), pygame.SRCALPHA)
+        pygame.draw.rect(panel, (30, 30, 35, 240), (0, 0, panelW, panelH), border_radius=self._s(15))
+        pygame.draw.rect(panel, (*darkGreen, 200), (0, 0, panelW, panelH), self._s(4), border_radius=self._s(15))
+        surf.blit(panel, (cx - panelW // 2, cy - panelH // 2))
+
+        titleSurf = self.font.render(levelComplete, True, green)
+        titleRect = titleSurf.get_rect(center=(cx, cy - self._s(80)))
+
+        for offset in range(self._s(15), 0, -3):
+            glow = self.font.render(levelComplete, True, darkGreen)
+            glow.set_alpha(int(40 * (1 - offset / self._s(15))))
+            for dx, dy in [(-offset, 0), (offset, 0), (0, -offset), (0, offset)]:
+                surf.blit(glow, titleSurf.get_rect(center=(cx + dx, cy - self._s(80) + dy)))
+
+        shadow = self.font.render(levelComplete, True, (0, 50, 20))
+        surf.blit(shadow, titleSurf.get_rect(center=(cx + self._s(4), cy - self._s(76))))
+        surf.blit(titleSurf, titleRect)
+
+        scoreText = f"Score Final: {score}"
+        scoreSurf = self.scoreFont.render(scoreText, True, gold)
+        scoreRect = scoreSurf.get_rect(center=(cx, cy + self._s(10)))
+        scoreShadow = self.scoreFont.render(scoreText, True, (100, 80, 0))
+        surf.blit(scoreShadow, scoreSurf.get_rect(center=(cx + self._s(2), cy + self._s(12))))
+        surf.blit(scoreSurf, scoreRect)
+
+        restartSurf = self.smallFont.render(levelCompleteRestart, True, white)
+        restartRect = restartSurf.get_rect(center=(cx, cy + self._s(90)))
+        surf.blit(restartSurf, restartRect)
+
+        screen.blit(self._levelCompleteSurf, (0, 0))
+
+    def draw(self, screen: Surface, score: int, bGameOver: bool, hitCount: int = 0, maxHits: int = 3, bLevelComplete: bool = False) -> None:
         self.drawScore(screen, score)
         self.drawHitCounter(screen, hitCount, maxHits)
         self.drawControls(screen)
-        if bGameOver:
+        if bLevelComplete:
+            self.drawLevelComplete(screen, score)
+        elif bGameOver:
             self.drawGameOver(screen, score)
