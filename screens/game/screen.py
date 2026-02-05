@@ -77,7 +77,7 @@ class GameScreen:
         self.trappedDuration: float = 4.0
         self.trappingCage: FallingCage | None = None
 
-        self.finaleScore: int = 500
+        self.finaleScore: int = 3000
         self.bFinaleTriggered: bool = False
         self.bChaserTrapped: bool = False
         self.bLevelComplete: bool = False

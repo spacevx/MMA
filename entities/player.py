@@ -16,6 +16,10 @@ from paths import assetsPath
 runningFramesPath = assetsPath / "player" / "running" / "frames"
 slidingFramesPath = assetsPath / "player" / "sliding" / "frames"
 trappedFramesPath = assetsPath / "player" / "trapped"
+jumpSoundPath = assetsPath / "songs" / "jump.ogg"
+_jumpSound: pygame.mixer.Sound | None = None
+slideSoundPath = assetsPath / "songs" / "cartoon-slide.ogg"
+_slideSound: pygame.mixer.Sound | None = None
 
 _cachedRunningHeight: int | None = None
 
@@ -95,7 +99,11 @@ class Player(AnimatedSprite):
                 self._slide()
 
     def _jump(self) -> None:
+        global _jumpSound
         if self.bOnGround and self.state != PlayerState.SLIDING:
+            if _jumpSound is None:
+                _jumpSound = pygame.mixer.Sound(jumpSoundPath)
+            _jumpSound.play()
             self.velocity.y = self.jumpForce
             self.state = PlayerState.JUMPING
             self.bOnGround = False
@@ -103,7 +111,11 @@ class Player(AnimatedSprite):
             self.rect = self.image.get_rect(midbottom=self.rect.midbottom)
 
     def _slide(self) -> None:
+        global _slideSound
         if self.bOnGround and self.state == PlayerState.RUNNING and self.slideCooldownTimer <= 0:
+            if _slideSound is None:
+                _slideSound = pygame.mixer.Sound(slideSoundPath)
+            _slideSound.play()
             self.state = PlayerState.SLIDING
             self.slideTimer = self.slideDuration
             self.slideBoostTimer = self.slideDuration
