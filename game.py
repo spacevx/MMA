@@ -11,11 +11,13 @@ from settings import (
 from screens import MainMenu, GameScreen, OptionsScreen
 from discord import DiscordRPC
 from paths import assetsPath
+import config
 
 
 class Game:
     def __init__(self) -> None:
         pygame.init()
+        config.load()
         pygame.display.set_mode((width, height), 0)
         self.screen: Surface = pygame.display.set_mode((width, height), displayFlags)
         pygame.display.set_caption(title)
@@ -164,5 +166,6 @@ class Game:
                 self.draw()
                 await asyncio.sleep(0)
         finally:
+            config.save()
             await self.discordRpc.close()
             pygame.quit()

@@ -9,6 +9,7 @@ from pygame.font import Font
 if TYPE_CHECKING:
     from entities.input.manager import InputEvent
 
+import config
 import settings
 from settings import GameState, ScreenSize
 from keybindings import keyBindings
@@ -326,6 +327,7 @@ class OptionsScreen:
         if event.type == pygame.MOUSEBUTTONUP and event.button == 1:
             if self._soundToggleRect.collidepoint(event.pos):
                 settings.bSoundEnabled = not settings.bSoundEnabled
+                config.save()
                 return
             for i, rect in enumerate(self._iconRects):
                 if rect.collidepoint(event.pos):
@@ -335,7 +337,9 @@ class OptionsScreen:
         if self.resetBtn.handleEvent(event):
             keyBindings.reset()
             self._loadKeyIcons()
+            config.save()
         elif self.backBtn.handleEvent(event):
+            config.save()
             self.setState(GameState.MENU)
 
     def update(self, dt: float) -> None:
