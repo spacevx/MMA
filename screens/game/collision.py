@@ -16,7 +16,7 @@ class CollisionResult:
     trappingCage: FallingCage | None = None
 
 
-class CollisionSystem:
+class GameCollision:
     baseW: int = 1920
     baseH: int = 1080
 

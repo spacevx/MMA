@@ -16,6 +16,7 @@ from strings import (
     optionsJoyReset, optionsNoController, optionsPressButton
 )
 
+# EMSScripten =  WASM (so Python running in Web env)
 _BROWSER: bool = sys.platform == "emscripten"
 
 pygame_gui: Any = None

@@ -29,6 +29,7 @@ class PlayerState(Enum):
     TRAPPED = auto()
     TACKLED = auto()
 
+
 class Player(AnimatedSprite):
     gravity: float = 1100.0
     jumpForce: float = -650.0
@@ -40,6 +41,8 @@ class Player(AnimatedSprite):
     slideImmunityWindow: float = 0.8
 
     def __init__(self, x: int, groundY: int) -> None:
+        # Please don't remove the slice on the frames here, some frames are invalid, so if you took/render all the frames for running
+        # It's going to create a small bug where the running animation will broke for 1seconds (so 1000 frames) like static player
         runningFrames = loadFrames(runningFramesPath, scale=self.playerScale, frameSlice=slice(116, 132))
         self.runningHeight: int = runningFrames[0].surface.get_height()
         slidingTargetHeight = int(self.runningHeight * self.slideScaleMult)
@@ -61,6 +64,7 @@ class Player(AnimatedSprite):
         self.slideCooldownTimer: float = 0.0
         self.bOnGround: bool = True
 
+    # Used for setting the frames of the player (runnning, sliding, trapped) check animation.py for more info
     def _setFrames(self, frames: list[AnimationFrame]) -> None:
         self.frames = frames
         self.frameIdx = 0
@@ -138,6 +142,8 @@ class Player(AnimatedSprite):
     def _updateImage(self) -> None:
         self.image = self._getFrame()
 
+    # When working on this, when playing with the frames don't forget to put them in cache, else ur game will freeze since
+    # it's trying to render each frames
     def update(self, dt: float) -> None:
         if self.updateAnimation(dt):
             self._updateImage()

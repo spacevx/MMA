@@ -98,6 +98,7 @@ class Game:
 
             elif event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_F11:
+                    # TODO: Fix the fullscreen, right now players size won't work well on fullscreen
                     self._toggleFullscreen()
                 elif event.key == pygame.K_ESCAPE and self.bFullscreen:
                     self._toggleFullscreen()

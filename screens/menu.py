@@ -16,6 +16,7 @@ UIManager: Any = None
 UIButton: Any = None
 ObjectID: Any = None
 
+# Had to do this nasty code, because else the WASM compiler won't work since those libs don't exist in WASM
 if not _BROWSER:
     pygame_gui = __import__("pygame_gui")
     UIManager = getattr(__import__("pygame_gui", fromlist=["UIManager"]), "UIManager")
@@ -24,8 +25,6 @@ if not _BROWSER:
 
 
 class _SimpleButton:
-    """Pure pygame button for browser fallback."""
-
     def __init__(
         self,
         rect: pygame.Rect,

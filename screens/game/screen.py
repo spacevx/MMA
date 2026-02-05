@@ -17,7 +17,7 @@ from paths import assetsPath, screensPath
 
 from .hud import HUD
 from .spawner import ObstacleSpawner
-from .collision import CollisionSystem
+from .collision import GameCollision
 
 tilesPath = assetsPath / "tiles" / "ground"
 ceilingTilesPath = assetsPath / "tiles" / "ceiling"
@@ -75,7 +75,7 @@ class GameScreen:
 
         self.hud = HUD(self.screenSize)
         self.spawner = ObstacleSpawner(self.screenSize, self.groundY, self.scrollSpeed)
-        self.collisionSystem = CollisionSystem(self.screenSize)
+        self.gameCollision = GameCollision(self.screenSize)
 
     def _s(self, val: int) -> int:
         return max(1, int(val * self.scale))
@@ -130,7 +130,7 @@ class GameScreen:
 
         self.hud.onResize(newSize)
         self.spawner.onResize(newSize, self.groundY)
-        self.collisionSystem.onResize(newSize)
+        self.gameCollision.onResize(newSize)
 
     def reset(self) -> None:
         Obstacle.clearCache()
@@ -259,7 +259,7 @@ class GameScreen:
 
     def _handleCollisions(self) -> None:
         bInvincible = self.slowdownTimer > 0
-        result = self.collisionSystem.check(
+        result = self.gameCollision.check(
             self.localPlayer, self.chaser, self.obstacles, self.fallingCages, bInvincible
         )
 
