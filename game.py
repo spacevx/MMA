@@ -8,7 +8,7 @@ from settings import (
     width, height, minWidth, minHeight, fps, title,
     GameState, displayFlags, ScreenSize
 )
-from screens import MainMenu, GameScreen, OptionsScreen, LevelSelectScreen
+from screens import MainMenu, GameScreen, OptionsScreen, LevelSelectScreen, ScreenTransition, SlideDir
 from discord import DiscordRPC
 from levels import level1Config, levelConfigs
 from paths import assetsPath
@@ -41,6 +41,10 @@ class Game:
         self.gameScreen: GameScreen = GameScreen(self.setState, level1Config)
         self.optionsScreen: OptionsScreen = OptionsScreen((width, height), self.setState)
 
+        self.transition: ScreenTransition = ScreenTransition(self.screenSize)
+        self._pendingState: GameState | None = None
+        self._snapSurf: Surface = Surface(self.screenSize)
+
         self.discordRpc: DiscordRPC = DiscordRPC()
         self.rpcUpdateTimer: float = 0.0
         self.rpcUpdateInterval: float = 5.0
@@ -55,7 +59,47 @@ class Game:
         self.gameScreen.onResize(self.screenSize)
         self.setState(GameState.GAME)
 
+    def _transitionPair(self, fromState: GameState, toState: GameState) -> tuple[SlideDir, bool]:
+        if fromState == GameState.MENU and toState == GameState.OPTIONS:
+            return SlideDir.LEFT, True
+        if fromState == GameState.OPTIONS and toState == GameState.MENU:
+            return SlideDir.RIGHT, True
+        if fromState == GameState.MENU and toState == GameState.LEVEL_SELECT:
+            return SlideDir.LEFT, True
+        if fromState == GameState.LEVEL_SELECT and toState == GameState.MENU:
+            return SlideDir.RIGHT, True
+        return SlideDir.LEFT, False
+
+    def _renderStateToSurf(self, state: GameState, surf: Surface) -> None:
+        if state == GameState.MENU:
+            self.menu.draw(surf)
+        elif state == GameState.OPTIONS:
+            self.optionsScreen.draw(surf)
+        elif state == GameState.LEVEL_SELECT:
+            self.levelSelect.draw(surf)
+        elif state == GameState.GAME:
+            self.gameScreen.draw(surf)
+
     def setState(self, newState: GameState) -> None:
+        if self.transition.bActive:
+            return
+
+        direction, bAnimate = self._transitionPair(self.state, newState)
+
+        if bAnimate:
+            self._pendingState = newState
+
+            fromSurf = self._snapSurf
+            fromSurf.fill((0, 0, 0))
+            self._renderStateToSurf(self.state, fromSurf)
+
+            toSurf = Surface(self.screenSize)
+            toSurf.fill((0, 0, 0))
+            self._renderStateToSurf(newState, toSurf)
+
+            self.transition.start(fromSurf, toSurf, direction)
+            return
+
         if newState == GameState.GAME and self.state != GameState.GAME:
             self.gameScreen.reset()
         self.state = newState
@@ -88,6 +132,8 @@ class Game:
         self.levelSelect.onResize(self.screenSize)
         self.gameScreen.onResize(self.screenSize)
         self.optionsScreen.onResize(self.screenSize)
+        self.transition.onResize(self.screenSize)
+        self._snapSurf = Surface(self.screenSize)
 
     def _handleResize(self, event: Event) -> None:
         w: int = max(event.w, minWidth)
@@ -98,6 +144,8 @@ class Game:
         self.levelSelect.onResize(self.screenSize)
         self.gameScreen.onResize(self.screenSize)
         self.optionsScreen.onResize(self.screenSize)
+        self.transition.onResize(self.screenSize)
+        self._snapSurf = Surface(self.screenSize)
 
     def handleEvents(self) -> None:
         for event in pygame.event.get():
@@ -122,6 +170,9 @@ class Game:
                 elif event.key == pygame.K_ESCAPE and self.bFullscreen:
                     self._toggleFullscreen()
 
+            if self.transition.bActive:
+                continue
+
             if self.state == GameState.MENU:
                 self.menu.handleEvent(event, inputEvent)
 
@@ -141,6 +192,18 @@ class Game:
                     self.setState(GameState.MENU)
 
     def update(self, dt: float) -> None:
+        if self.transition.bActive:
+            bDone = self.transition.update(dt)
+            if bDone and self._pendingState is not None:
+                pending = self._pendingState
+                self._pendingState = None
+                if pending == GameState.GAME and self.state != GameState.GAME:
+                    self.gameScreen.reset()
+                self.state = pending
+                if self.state == GameState.QUIT:
+                    self.bRunning = False
+            return
+
         if self.state == GameState.MENU:
             self.menu.update(dt)
         elif self.state == GameState.LEVEL_SELECT:
@@ -154,6 +217,11 @@ class Game:
             self.optionsScreen.update(dt)
 
     def draw(self) -> None:
+        if self.transition.bActive:
+            self.transition.draw(self.screen)
+            pygame.display.flip()
+            return
+
         if self.state == GameState.MENU:
             self.menu.draw(self.screen)
         elif self.state == GameState.LEVEL_SELECT:

@@ -18,7 +18,7 @@ from keybindings import keyBindings
 from levels import LevelConfig, level1Config
 from settings import GameState, ScreenSize, width, height, obstacleSpawnEvent
 from entities import (
-    Player, Chaser, Obstacle, FallingCage, Ceiling,
+    Player, PlayerState, Chaser, Obstacle, FallingCage, Ceiling,
     TileSet, GroundTilemap, CeilingTileSet, CeilingTilemap
 )
 from entities.obstacle.cage import CageState
@@ -85,7 +85,7 @@ class GameScreen:
         self.trappedDuration: float = 4.0
         self.trappingCage: FallingCage | None = None
 
-        self.bFinaleTriggered: bool = False
+        self.bFinaleArmed: bool = False
         self.bChaserTrapped: bool = False
         self.bLevelComplete: bool = False
         self.finaleCage: FallingCage | None = None
@@ -218,7 +218,7 @@ class GameScreen:
         self.trappedTimer = 0.0
         self.trappingCage = None
 
-        self.bFinaleTriggered = False
+        self.bFinaleArmed = False
         self.bChaserTrapped = False
         self.bLevelComplete = False
         self.finaleCage = None
@@ -265,10 +265,14 @@ class GameScreen:
                 elif name not in ("JUMP", "SLIDE"):
                     self._eeStep = 0
 
-        self.spawner.handleEvent(event, self.obstacles, self.bGameOver or self.bFinaleTriggered)
+        self.spawner.handleEvent(event, self.obstacles, self.bGameOver or self.bFinaleArmed)
 
     def update(self, dt: float) -> None:
         if self.bGameOver or self.bLevelComplete:
+            return
+
+        if self.bChaserTrapped:
+            self._updateFinale(dt)
             return
 
         if self.bPlayerTrapped:
@@ -300,10 +304,12 @@ class GameScreen:
 
         if self.ceilingTilemap and cfg.bFallingCages:
             cageXs = self.ceilingTilemap.update(scrollDelta)
-            if not self.bFinaleTriggered:
+            if not self.finaleCage:
                 for cx in cageXs:
                     if self.spawner.canSpawnCage():
                         self.spawner.spawnCageAt(cx, self.ceiling.height, self.fallingCages)
+                        if self.bFinaleArmed:
+                            self.finaleCage = self.fallingCages.sprites()[-1]
         elif self.ceilingTilemap:
             self.ceilingTilemap.update(scrollDelta)
 
@@ -319,36 +325,31 @@ class GameScreen:
         self.obstacles.update(dt)
 
         playerX = self.localPlayer.rect.centerx
+        chaserX = self.chaser.rect.centerx if self.chaser else None
         for cage in self.fallingCages:
-            cage.update(dt, playerX)
+            cage.update(dt, chaserX if cage is self.finaleCage else playerX)
 
         self._handleCollisions()
         self._checkDodgeScore()
         self._updateFinale(dt)
 
     def _updateFinale(self, dt: float) -> None:
-        if not self.bFinaleTriggered and self.score >= self.levelConfig.finaleScore and self.chaser:
-            self.bFinaleTriggered = True
+        if not self.bFinaleArmed and self.score >= self.levelConfig.finaleScore and self.chaser:
+            self.bFinaleArmed = True
             pygame.time.set_timer(obstacleSpawnEvent, 0)
-            cage = FallingCage(int(self.chaser.rect.centerx), self.ceiling.height, self.groundY, 0.0)
-            cage.triggerFall()
-            self.finaleCage = cage
 
-        if self.finaleCage:
-            if not self.bChaserTrapped:
-                self.finaleCage.update(dt)
-                if self.chaser:
-                    self.finaleCage.rect.centerx = self.chaser.rect.centerx
-                    self.finaleCage.chainRect.centerx = self.chaser.rect.centerx
+        if self.finaleCage and not self.bChaserTrapped and self.chaser:
+            if self.finaleCage.state in (CageState.FALLING, CageState.GROUNDED):
+                if self.finaleCage.rect.bottom >= self.chaser.rect.top:
+                    self.chaser.trap()
+                    self.finaleCage.trapPlayer(self.chaser.rect.centerx)
+                    self.bChaserTrapped = True
 
-                if self.finaleCage.state in (CageState.FALLING, CageState.GROUNDED) and self.chaser:
-                    if self.finaleCage.rect.bottom >= self.chaser.rect.top:
-                        self.chaser.trap()
-                        self.finaleCage.trapPlayer(self.chaser.rect.centerx)
-                        self.bChaserTrapped = True
-                        self.bLevelComplete = True
-            else:
-                self.finaleCage.update(dt)
+        if self.bChaserTrapped and not self.bLevelComplete:
+            self.localPlayer.update(dt)
+            self.finaleCage.update(dt)
+            if self.localPlayer.state != PlayerState.SLIDING:
+                self.bLevelComplete = True
 
     def _updateTrapped(self, dt: float) -> None:
         self.trappedTimer -= dt
@@ -392,12 +393,12 @@ class GameScreen:
             self.slowdownTimer = cfg.slowdownDuration
             if self.chaser:
                 self.chaser.onPlayerHit()
-            if self.hitCount >= cfg.maxHits and self.chaser and not self.bFinaleTriggered:
+            if self.hitCount >= cfg.maxHits and self.chaser and not self.bFinaleArmed:
                 self.bChaserCatching = True
                 self.chaser.startCatching(self.localPlayer.rect.centerx)
                 pygame.time.set_timer(obstacleSpawnEvent, 0)
 
-        if result.bHitCage and result.trappingCage:
+        if result.bHitCage and result.trappingCage and result.trappingCage is not self.finaleCage:
             self.bPlayerTrapped = True
             self.trappedTimer = self.trappedDuration
             self.trappingCage = result.trappingCage
@@ -433,15 +434,18 @@ class GameScreen:
         else:
             screen.blit(self.localPlayer.image, self.localPlayer.rect)
 
+        if self.finaleCage and self.bChaserTrapped:
+            self.finaleCage.draw(screen)
+
         if self.chaser:
             screen.blit(self.chaser.image, self.chaser.rect)
         if self.ceilingTilemap:
             self.ceilingTilemap.draw(screen)
 
         for cage in self.fallingCages:
+            if cage is self.finaleCage and self.bChaserTrapped:
+                continue
             cage.draw(screen)
-        if self.finaleCage:
-            self.finaleCage.draw(screen)
 
         self.hud.draw(screen, self.score, self.bGameOver, self.hitCount,
                       self.levelConfig.maxHits, self.bLevelComplete)
