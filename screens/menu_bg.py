@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from pathlib import Path
 
 import pygame
 from pygame import Surface
@@ -24,15 +25,19 @@ class MenuBackground:
     ceilingRatio: float = 0.0542
     overlayAlpha: int = 130
 
-    def __init__(self, screenSize: ScreenSize) -> None:
+    def __init__(self, screenSize: ScreenSize, backgroundPath: Path | None = None,
+                 bHasCeilingTiles: bool = True) -> None:
         self.screenSize = screenSize
         self.scale = min(screenSize[0] / self.baseW, screenSize[1] / self.baseH)
         self.groundY = int(screenSize[1] * self.groundRatio)
         self.scrollX: float = 0.0
+        self.backgroundPath = backgroundPath
+        self.bHasCeilingTiles = bHasCeilingTiles
 
         self._loadBackground()
         self._initTilemap()
-        self._initCeilingTilemap()
+        if self.bHasCeilingTiles:
+            self._initCeilingTilemap()
 
         self.demoPlayer = Player(self._s(320), self.groundY)
 
@@ -42,7 +47,7 @@ class MenuBackground:
         return max(1, int(val * self.scale))
 
     def _loadBackground(self) -> None:
-        path = screensPath / "background.png"
+        path = self.backgroundPath or screensPath / "background.png"
         try:
             original = pygame.image.load(str(path)).convert()
             self.background = pygame.transform.scale(original, self.screenSize)
@@ -93,7 +98,8 @@ class MenuBackground:
             self.scrollX -= self.bgWidth
 
         self.groundTilemap.update(scrollDelta)
-        self.ceilingTilemap.update(scrollDelta)
+        if self.bHasCeilingTiles:
+            self.ceilingTilemap.update(scrollDelta)
 
         self.demoPlayer.update(dt)
 
@@ -105,7 +111,8 @@ class MenuBackground:
 
         self.groundTilemap.draw(screen)
         screen.blit(self.demoPlayer.image, self.demoPlayer.rect)
-        self.ceilingTilemap.draw(screen)
+        if self.bHasCeilingTiles:
+            self.ceilingTilemap.draw(screen)
 
         screen.blit(self.overlaySurf, (0, 0))
 
@@ -117,7 +124,8 @@ class MenuBackground:
 
         self._loadBackground()
         self.groundTilemap.on_resize(newSize[0], self.groundY, newSize[1] - self.groundY)
-        self.ceiling.onResize(newSize[0], self.ceilingY)
-        self.ceilingTilemap.on_resize(newSize[0], self.ceiling.height)
+        if self.bHasCeilingTiles:
+            self.ceiling.onResize(newSize[0], self.ceilingY)
+            self.ceilingTilemap.on_resize(newSize[0], self.ceiling.height)
         self.demoPlayer.setGroundY(self.groundY)
         self._buildOverlay()

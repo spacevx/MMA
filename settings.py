@@ -57,6 +57,11 @@ def completeLevel(levelId: int) -> None:
     levelCompleted[levelId] = True
     levelUnlocked[levelId + 1] = True
 
+
+def lastCompletedLevel() -> int | None:
+    done = [k for k, v in levelCompleted.items() if v]
+    return max(done) if done else None
+
 JOY_DEADZONE: Final[float] = 0.3
 JOY_AXIS_THRESHOLD: Final[float] = 0.5
 DEFAULT_JOY_JUMP: Final[int] = 0

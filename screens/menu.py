@@ -9,8 +9,9 @@ from pygame.font import Font
 if TYPE_CHECKING:
     from entities.input.manager import InputEvent
 
-from settings import width, height, GameState, ScreenSize
+from settings import width, height, GameState, ScreenSize, lastCompletedLevel
 from strings import btnPlay, btnOptions, btnQuit
+from levels import levelConfigs
 from screens.menu_bg import MenuBackground
 from screens.ui import ModernButton
 
@@ -24,7 +25,13 @@ class MainMenu:
         self.screenSize: ScreenSize = (width, height)
         self.scale: float = min(width / self.baseW, height / self.baseH)
 
-        self.menuBg = MenuBackground(self.screenSize)
+        lvl = lastCompletedLevel()
+        cfg = levelConfigs.get(lvl) if lvl else None  # type: ignore[arg-type]
+        self.menuBg = MenuBackground(
+            self.screenSize,
+            cfg.backgroundPath if cfg else None,
+            cfg.bHasCeilingTiles if cfg else True,
+        )
 
         self.buttonFont: Font = pygame.font.Font(None, self._s(28))
         self.playBtn: ModernButton

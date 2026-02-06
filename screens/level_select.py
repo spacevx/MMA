@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 import flags
 import settings
-from settings import GameState, ScreenSize
+from settings import GameState, ScreenSize, lastCompletedLevel
 from levels import levelConfigs
 from strings import (
     levelSelectTitle, levelCompleted, levelLocked, levelAvailable,
@@ -52,7 +52,13 @@ class LevelSelectScreen:
         self.screenSize: ScreenSize = screenSize
         self.scale: float = min(screenSize[0] / self.baseW, screenSize[1] / self.baseH)
 
-        self.menuBg = MenuBackground(screenSize)
+        lvl = lastCompletedLevel()
+        cfg = levelConfigs.get(lvl) if lvl else None  # type: ignore[arg-type]
+        self.menuBg = MenuBackground(
+            screenSize,
+            cfg.backgroundPath if cfg else None,
+            cfg.bHasCeilingTiles if cfg else True,
+        )
 
         self.titleFont: Font = Font(None, self._s(80))
         self.numberFont: Font = Font(None, self._s(60))
