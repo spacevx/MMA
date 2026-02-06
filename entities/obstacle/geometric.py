@@ -25,7 +25,7 @@ class GeometricObstacle(BaseObstacle):
         self.rect = self.image.get_rect(centerx=x, bottom=y)
 
     def _getSizeForShape(self, shape: str, scale: float) -> int:
-        baseSizes = {"triangle": 60, "square": 50, "hexagon": 70}
+        baseSizes = {"triangle": 60, "square": 70, "hexagon": 70}
         return max(1, int(baseSizes.get(shape, 50) * scale))
 
     @classmethod

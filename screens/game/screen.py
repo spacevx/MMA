@@ -42,7 +42,7 @@ class GameScreen:
     baseW: int = 1280
     baseH: int = 720
     groundRatio: float = 1.0
-    ceilingRatio: float = 0.083
+    ceilingRatio: float = 0.0542
     cageDodgeScore: int = 150
 
     def __init__(self, setStateCallback: Callable[[GameState], None],
@@ -94,6 +94,7 @@ class GameScreen:
         self.finaleCage: FallingCage | None = None
 
         self.laserBeams: list[Any] = []
+        self.disintegrationEffects: list[Any] = []
 
         self.tileset: TileSet | None = None
         self.groundTilemap: GroundTilemap | None = None
@@ -159,6 +160,10 @@ class GameScreen:
             endX = hitObstacle.rect.left
             if hasattr(hitObstacle, 'takeDamage'):
                 if hitObstacle.takeDamage(1):
+                    from entities.obstacle.geometric import GeometricObstacle
+                    from entities.disintegration import DisintegrationEffect
+                    if isinstance(hitObstacle, GeometricObstacle):
+                        self.disintegrationEffects.append(DisintegrationEffect(hitObstacle))
                     hitObstacle.kill()
                     self.score += 100
 
@@ -170,6 +175,12 @@ class GameScreen:
             beam.update(dt)
             if beam.bDone:
                 self.laserBeams.remove(beam)
+
+    def _updateDisintegrations(self, dt: float) -> None:
+        for fx in self.disintegrationEffects[:]:
+            fx.update(dt)
+            if fx.bDone:
+                self.disintegrationEffects.remove(fx)
 
     def _s(self, val: int) -> int:
         return max(1, int(val * self.scale))
@@ -268,6 +279,7 @@ class GameScreen:
         self.bChaserTrapped = False
         self.bLevelComplete = False
         self.finaleCage = None
+        self.disintegrationEffects = []
 
         self._eeStep = 0
         self._eeHeld.clear()
@@ -376,6 +388,7 @@ class GameScreen:
 
         self.localPlayer.update(dt)
         self._updateLasers(dt)
+        self._updateDisintegrations(dt)
         if self.chaser:
             self.chaser.setTarget(self.localPlayer.rect.centerx)
             self.chaser.update(dt, self.fallingCages, self.obstacles)
@@ -493,6 +506,9 @@ class GameScreen:
         if self.groundTilemap:
             self.groundTilemap.draw(screen)
         self.obstacles.draw(screen)
+
+        for fx in self.disintegrationEffects:
+            fx.draw(screen)
 
         for beam in self.laserBeams:
             beam.draw(screen)

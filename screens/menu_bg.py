@@ -21,7 +21,7 @@ class MenuBackground:
     baseH: int = 720
     scrollSpeed: float = 300.0
     groundRatio: float = 1.0
-    ceilingRatio: float = 0.083
+    ceilingRatio: float = 0.0542
     overlayAlpha: int = 130
 
     def __init__(self, screenSize: ScreenSize) -> None:
