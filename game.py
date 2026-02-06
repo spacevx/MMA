@@ -89,6 +89,9 @@ class Game:
 
         direction, bSlide, bFade = self._transitionPair(self.state, newState)
 
+        if newState == GameState.OPTIONS:
+            self.optionsScreen.refreshBackground()
+
         if bFade:
             self._pendingState = newState
             self.fadeTransition.start()

@@ -17,6 +17,7 @@ from strings import (
     optionsTitle, optionsControls, optionsJump, optionsSlide, optionsRestart,
     optionsReset, optionsBack, optionsPressKey, optionsSound
 )
+from levels import levelConfigs, level1Config
 from screens.menu_bg import MenuBackground
 from screens.ui import ModernButton
 
@@ -36,7 +37,7 @@ class OptionsScreen:
         self.screenSize: ScreenSize = screenSize
         self.scale: float = min(screenSize[0] / self.baseW, screenSize[1] / self.baseH)
 
-        self.menuBg = MenuBackground(screenSize)
+        self.menuBg = self._createMenuBg(screenSize)
 
         self.panelSurf: Surface | None = None
 
@@ -67,6 +68,16 @@ class OptionsScreen:
 
         self.time: float = 0.0
         self.titlePulse: float = 0.0
+
+    @staticmethod
+    def _createMenuBg(screenSize: ScreenSize) -> MenuBackground:
+        levelId = settings.lastCompletedLevel() or 1
+        cfg = levelConfigs.get(levelId, level1Config)
+        return MenuBackground(screenSize, backgroundPath=cfg.backgroundPath,
+                              bHasCeilingTiles=cfg.bHasCeilingTiles)
+
+    def refreshBackground(self) -> None:
+        self.menuBg = self._createMenuBg(self.screenSize)
 
     def _s(self, val: int) -> int:
         return max(1, int(val * self.scale))

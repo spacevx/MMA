@@ -5,7 +5,7 @@ from dataclasses import dataclass
 import pygame
 from pygame.sprite import Group
 
-from entities import Player, PlayerState, Chaser, Obstacle, FallingCage, CageState
+from entities import Player, PlayerState, Chaser, Obstacle, BaseObstacle, FallingCage, CageState
 
 
 @dataclass
@@ -87,8 +87,8 @@ class GameCollision:
 
         return result
 
-    def checkLaserHit(self, playerX: int, playerY: int, obstacles: Group,
-                      laserRange: float) -> Obstacle | None:
+    def checkLaserHit(self, playerX: int, playerY: int, obstacles: Group[BaseObstacle],
+                      laserRange: float) -> BaseObstacle | None:
         from entities.obstacle.geometric import GeometricObstacle
 
         laserRect = pygame.Rect(playerX, playerY - 15, int(laserRange), 30)

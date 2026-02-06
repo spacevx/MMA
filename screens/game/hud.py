@@ -1,5 +1,3 @@
-import math
-
 import pygame
 from pygame import Surface
 from pygame.font import Font
@@ -10,7 +8,8 @@ from strings import (
     gameOver, gameRestartKey, gameRestartButton, hudJump, hudSlide, hudDoubleJump,
     levelComplete, levelCompleteRestart, gameOverMenuKey, gameOverMenuButton
 )
-from screens.ui import _gradientRect, tablerIcon
+from screens.ui import _gradientRect, tablerIcon, drawTextWithShadow, glassPanel
+from screens.ui.ecg import EcgMonitor
 
 
 class HUD:
@@ -50,7 +49,7 @@ class HUD:
         self._gameOverSurf: Surface | None = None
         self._gameOverScore: int = -1
         self._gameOverInputSource: object = None
-        self._ecgStartTick: int = 0
+        self._ecg = EcgMonitor(self.scale)
 
         self._levelCompleteSurf: Surface | None = None
         self._levelCompleteScore: int = -1
@@ -60,10 +59,7 @@ class HUD:
         return max(1, int(val * self.scale))
 
     def _glassPanel(self, w: int, h: int) -> Surface:
-        cr = self._s(12)
-        panel = _gradientRect(w, h, (20, 22, 30), (12, 14, 20), 200, cr)
-        pygame.draw.rect(panel, (45, 48, 60), (0, 0, w, h), 1, border_radius=cr)
-        return panel
+        return glassPanel(w, h, self.scale)
 
     def _drawHeart(self, surf: Surface, cx: int, cy: int, size: int,
                    color: str) -> None:
@@ -80,6 +76,7 @@ class HUD:
         self.screenSize = newSize
         self.scale = min(newSize[0] / self.baseW, newSize[1] / self.baseH)
         self._createFonts()
+        self._ecg.onResize(self.scale)
         self._invalidateAll()
 
     def _invalidateAll(self) -> None:
@@ -104,7 +101,7 @@ class HUD:
         self._gameOverSurf = None
         self._gameOverScore = -1
         self._gameOverInputSource = None
-        self._ecgStartTick = 0
+        self._ecg.reset()
         self._levelCompleteSurf = None
         self._levelCompleteScore = -1
         self._levelCompleteInputSource = None
@@ -112,18 +109,12 @@ class HUD:
     def _drawTextWithShadow(self, screen: Surface, text: str, font: Font,
                             color: tuple[int, int, int], pos: tuple[int, int],
                             shadowOffset: int = 2) -> None:
-        shadow = font.render(text, True, (0, 0, 0))
-        surf = font.render(text, True, color)
-        screen.blit(shadow, (pos[0] + shadowOffset, pos[1] + shadowOffset))
-        screen.blit(surf, pos)
+        drawTextWithShadow(screen, text, font, color, pos, shadowOffset)
 
     def _drawTextWithShadowOnSurf(self, target: Surface, text: str, font: Font,
                                   color: tuple[int, int, int], pos: tuple[int, int],
                                   shadowOffset: int = 2) -> None:
-        shadow = font.render(text, True, (0, 0, 0))
-        surf = font.render(text, True, color)
-        target.blit(shadow, (pos[0] + shadowOffset, pos[1] + shadowOffset))
-        target.blit(surf, pos)
+        drawTextWithShadow(target, text, font, color, pos, shadowOffset)
 
     def drawScore(self, screen: Surface, score: int, dt: float) -> None:
         scoreX, scoreY = self._s(30), self._s(25)
@@ -316,69 +307,6 @@ class HUD:
 
         self._controlsSurf = bgSurf
 
-    @staticmethod
-    def _ecgSample(t: float) -> float:
-        t = t % 1.0
-        if t < 0.10:
-            return 0.15 * math.sin(math.pi * t / 0.10)
-        if t < 0.16:
-            return 0.0
-        if t < 0.20:
-            return -0.15 * math.sin(math.pi * (t - 0.16) / 0.04)
-        if t < 0.26:
-            return 1.0 * math.sin(math.pi * (t - 0.20) / 0.06)
-        if t < 0.30:
-            return -0.3 * math.sin(math.pi * (t - 0.26) / 0.04)
-        if t < 0.44:
-            return 0.2 * math.sin(math.pi * (t - 0.30) / 0.14)
-        return 0.0
-
-    def _drawEcg(self, screen: Surface, ecgX: int, ecgY: int, ecgW: int, ecgH: int) -> None:
-        elapsed = (pygame.time.get_ticks() - self._ecgStartTick) / 1000.0
-
-        sweepSpeed = 1.5
-        cyclePeriod = 0.8
-        cursorFrac = (elapsed % sweepSpeed) / sweepSpeed
-
-        midY = ecgY + ecgH // 2
-        amplitude = ecgH * 0.45
-        stepCount = max(2, ecgW)
-
-        points: list[tuple[int, int]] = []
-        for i in range(stepCount):
-            frac = i / (stepCount - 1)
-            worldTime = elapsed - (cursorFrac - frac) * sweepSpeed
-            y = self._ecgSample(worldTime / cyclePeriod)
-            px = ecgX + int(frac * ecgW)
-            py = int(midY - y * amplitude)
-            points.append((px, py))
-
-        gapStart = max(0, int(cursorFrac * stepCount))
-        gapEnd = min(stepCount, gapStart + max(1, stepCount // 12))
-
-        before = points[:gapStart]
-        after = points[gapEnd:]
-
-        if len(before) >= 2:
-            glowSurf = pygame.Surface((ecgW + self._s(10), ecgH + self._s(10)), pygame.SRCALPHA)
-            ox, oy = ecgX - self._s(5), ecgY - self._s(5)
-            shifted = [(x - ox, y - oy) for x, y in before]
-            pygame.draw.lines(glowSurf, (200, 20, 20, 80), False, shifted, max(1, self._s(4)))
-            screen.blit(glowSurf, (ox, oy))
-            pygame.draw.aalines(screen, (255, 40, 40), False, before)
-        if len(after) >= 2:
-            glowSurf = pygame.Surface((ecgW + self._s(10), ecgH + self._s(10)), pygame.SRCALPHA)
-            ox, oy = ecgX - self._s(5), ecgY - self._s(5)
-            shifted = [(x - ox, y - oy) for x, y in after]
-            pygame.draw.lines(glowSurf, (200, 20, 20, 80), False, shifted, max(1, self._s(4)))
-            screen.blit(glowSurf, (ox, oy))
-            pygame.draw.aalines(screen, (255, 40, 40), False, after)
-
-        tipX = ecgX + int(cursorFrac * ecgW)
-        tipY = points[min(gapStart, stepCount - 1)][1]
-        pygame.draw.circle(screen, (255, 100, 100), (tipX, tipY), self._s(4))
-        pygame.draw.circle(screen, (255, 200, 200), (tipX, tipY), self._s(2))
-
     def drawGameOver(self, screen: Surface, score: int) -> None:
         from entities.input.manager import InputSource, GameAction
         from entities.input.joybindings import JoyBindings
@@ -391,7 +319,7 @@ class HUD:
         if bNeedRebuild:
             self._gameOverScore = score
             self._gameOverInputSource = curSource
-            self._ecgStartTick = pygame.time.get_ticks()
+            self._ecg.reset()
 
             w, h = self.screenSize
             self._gameOverSurf = pygame.Surface((w, h), pygame.SRCALPHA)
@@ -500,7 +428,7 @@ class HUD:
         ecgW = self._s(1000)
         ecgH = self._s(180)
         ecgX = cx - ecgW // 2
-        self._drawEcg(screen, ecgX, ecgY, ecgW, ecgH)
+        self._ecg.draw(screen, ecgX, ecgY, ecgW, ecgH)
 
     def drawHitCounter(self, screen: Surface, hitCount: int, maxHits: int) -> None:
         if hitCount == self._cachedHits and maxHits == self._cachedMaxHits and self._cachedHitSurf is not None:
