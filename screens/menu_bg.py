@@ -1,3 +1,5 @@
+# Background of the start menu
+
 from __future__ import annotations
 
 import math
@@ -32,8 +34,7 @@ class MenuBackground:
         self.groundY = int(screenSize[1] * self.groundRatio)
         self.scrollX: float = 0.0
         self.backgroundPath = backgroundPath
-        self.bHasCeilingTiles = bHasCeilingTiles
-
+        self.bHasCeilingTiles = bHasCeilingTiles # Only the first map have tiles, so we have to disable it for others maps (else it's going to render tiles from the first map)
         self._loadBackground()
         self._initTilemap()
         if self.bHasCeilingTiles:
@@ -43,28 +44,15 @@ class MenuBackground:
 
         self._buildOverlay()
 
+    # Scaling function, converts base resolution values to our current screen res
     def _s(self, val: int) -> int:
         return max(1, int(val * self.scale))
 
     def _loadBackground(self) -> None:
         path = self.backgroundPath or screensPath / "background.png"
-        try:
-            original = pygame.image.load(str(path)).convert()
-            self.background = pygame.transform.scale(original, self.screenSize)
-        except (pygame.error, FileNotFoundError):
-            self.background = self._createFallbackBg()
+        original = pygame.image.load(str(path)).convert()
+        self.background = pygame.transform.scale(original, self.screenSize)
         self.bgWidth = self.background.get_width()
-
-    def _createFallbackBg(self) -> Surface:
-        w, h = self.screenSize
-        surf = Surface((w, h))
-        for y in range(int(h * self.groundRatio)):
-            t = y / (h * self.groundRatio) if h * self.groundRatio > 0 else 0
-            r = int(100 + 35 * t)
-            g = int(160 + 46 * t)
-            b = int(220 + 35 * (1 - t))
-            pygame.draw.line(surf, (r, g, b), (0, y), (w, y))
-        return surf.convert()
 
     def _initTilemap(self) -> None:
         w = self.screenSize[0]
@@ -84,7 +72,7 @@ class MenuBackground:
         self.overlaySurf = Surface((w, h), pygame.SRCALPHA)
         self.overlaySurf.fill((0, 0, 0, self.overlayAlpha))
         cx, cy = w // 2, h // 2
-        maxDist = math.hypot(cx, cy)
+        maxDist = math.hypot(cx, cy)  # diagonal distance center -> corner
         for ring in range(0, int(maxDist), 6):
             t = ring / maxDist
             alpha = int(60 * (t ** 2.5))
@@ -109,6 +97,8 @@ class MenuBackground:
         screen.blit(self.background, (x1, 0))
         screen.blit(self.background, (x2, 0))
 
+        # Same logic as in game for scrolling the background
+
         self.groundTilemap.draw(screen)
         screen.blit(self.demoPlayer.image, self.demoPlayer.rect)
         if self.bHasCeilingTiles:
@@ -116,6 +106,7 @@ class MenuBackground:
 
         screen.blit(self.overlaySurf, (0, 0))
 
+    # Won't work well have to do more tests
     def onResize(self, newSize: ScreenSize) -> None:
         self.screenSize = newSize
         self.scale = min(newSize[0] / self.baseW, newSize[1] / self.baseH)

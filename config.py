@@ -21,6 +21,8 @@ def load() -> None:
             if attr in kb:
                 setattr(keyBindings, attr, kb[attr])
 
+    # This is not clean at all, was done quickly but in the future we need to make it more
+    # usable, everytime we want to add a new setting we have to add it here :(
     import settings
     if "bSoundEnabled" in data:
         settings.bSoundEnabled = data["bSoundEnabled"]

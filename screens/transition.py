@@ -5,6 +5,8 @@ import pygame
 from pygame import Surface
 from pygame.math import Vector2
 
+# Transition using LERP (linear interpolation) to make some animations (like move to animations) when going to a ui from another
+# TODO: merge it into our ui lib
 
 class SlideDir(Enum):
     LEFT = auto()
@@ -16,10 +18,12 @@ class FadePhase(Enum):
     IN = auto()
 
 
+# starts fast then slows down at the end, looks more natural
 def _easeOutCubic(t: float) -> float:
     return 1.0 - (1.0 - t) ** 3
 
 
+# slow at start, fast in the middle, slow at end (like a S curve)
 def _easeInOutSine(t: float) -> float:
     return 0.5 * (1.0 - math.cos(math.pi * t))
 

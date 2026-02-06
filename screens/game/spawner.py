@@ -12,7 +12,7 @@ from entities import Obstacle, BaseObstacle, FallingCage
 
 
 class ObstacleSpawner:
-    baseW: int = 1920
+    baseW: int = 1920 # Need to be reworked since those are not the good resolutions, but somehow it's working fine?
     baseH: int = 1080
     minGapBetweenTypes: float = 2.0
 
@@ -28,9 +28,10 @@ class ObstacleSpawner:
         self.obstacleSpawnDelay: float = 3.0
         self.lastBodyTime: float = 0.0
         self.lastCageTime: float = 0.0
-        self.bGeometricObstacles: bool = bGeometricObstacles
-        self.bHeadMode: bool = False
+        self.bGeometricObstacles: bool = bGeometricObstacles # Level 3 only
+        self.bHeadMode: bool = False # Special easter egg from level 3
 
+    # Scaling func
     def _s(self, val: int) -> int:
         return max(1, int(val * self.scale))
 
@@ -39,6 +40,8 @@ class ObstacleSpawner:
         self.scale = min(newSize[0] / self.baseW, newSize[1] / self.baseH)
         self.groundY = groundY
 
+
+    # Handle spawn timer event, so we know when we can spawn a new obstacle
     def handleEvent(self, event: Event, obstacles: Group[BaseObstacle], bGameOver: bool) -> None:
         if event.type == obstacleSpawnEvent and not bGameOver:
             now = time.monotonic()
@@ -48,6 +51,7 @@ class ObstacleSpawner:
             self.obstacleSpawnDelay = random.uniform(self.obstacleMinDelay, self.obstacleMaxDelay)
             pygame.time.set_timer(obstacleSpawnEvent, int(self.obstacleSpawnDelay * 1000))
 
+    # Spawn a obstacle, right now all this code is wayy too hardcoded (there is logic specific for level 3)
     def _spawnObstacle(self, obstacles: Group[BaseObstacle]) -> None:
         from entities.obstacle.base import BaseObstacle
         x = self.screenSize[0] + self._s(100)

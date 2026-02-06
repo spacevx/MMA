@@ -20,11 +20,13 @@ class MainMenu:
     baseW: int = 1920
     baseH: int = 1080
 
+    # We use a cb here because for the screen the instance Game doesn't exist yet
     def __init__(self, setStateCallback: Callable[[GameState], None]) -> None:
         self.setState: Callable[[GameState], None] = setStateCallback
         self.screenSize: ScreenSize = (width, height)
         self.scale: float = min(width / self.baseW, height / self.baseH)
 
+        # We are getting the last completed level to draw the background of this level into our start menu
         lvl = lastCompletedLevel()
         cfg = levelConfigs.get(lvl) if lvl else None
         self.menuBg = MenuBackground(

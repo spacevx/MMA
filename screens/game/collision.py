@@ -23,12 +23,15 @@ class GameCollision:
     def __init__(self, screenSize: tuple[int, int]) -> None:
         self.scale = min(screenSize[0] / self.baseW, screenSize[1] / self.baseH)
 
+    # Scaling func
     def _s(self, val: int) -> int:
         return max(1, int(val * self.scale))
 
     def onResize(self, screenSize: tuple[int, int]) -> None:
         self.scale = min(screenSize[0] / self.baseW, screenSize[1] / self.baseH)
 
+
+    # When a player hit obstacle, returns true if its a real hit (not jumping over it)
     def _obstacleCallback(self, player: Player, obstacle: Obstacle) -> bool:
         playerHitbox = player.getHitbox()
         obstacleHitbox = obstacle.getHitbox()
@@ -42,6 +45,8 @@ class GameCollision:
 
         return True
 
+    # Same but for falling cages, will ignore if it's a falling cage (or has the immunit window)
+    # Btw i need to rework the immunity window, rn this system is pure shit
     def _cageCallback(self, player: Player, cage: FallingCage) -> bool:
         if cage.state != CageState.FALLING:
             return False
@@ -57,6 +62,7 @@ class GameCollision:
 
         return True
 
+    # Run every frame and we are checking if the player hit a obstacle/cage or was caught by the chaser (it's like the update func)
     def check(self, player: Player, chaser: Chaser | None, obstacles: Group[Obstacle],
               cages: Group[FallingCage], bInvincible: bool) -> CollisionResult:
         result = CollisionResult()
@@ -87,6 +93,7 @@ class GameCollision:
 
         return result
 
+    # Func only for level 3, allow us to know if the laser hit a obstacle
     def checkLaserHit(self, playerX: int, playerY: int, obstacles: Group[BaseObstacle],
                       laserRange: float) -> BaseObstacle | None:
         from entities.obstacle.geometric import GeometricObstacle
