@@ -1,3 +1,5 @@
+import math
+
 import pygame
 from pygame import Surface
 from pygame.font import Font
@@ -48,6 +50,7 @@ class HUD:
         self._gameOverSurf: Surface | None = None
         self._gameOverScore: int = -1
         self._gameOverInputSource: object = None
+        self._ecgStartTick: int = 0
 
         self._levelCompleteSurf: Surface | None = None
         self._levelCompleteScore: int = -1
@@ -101,6 +104,7 @@ class HUD:
         self._gameOverSurf = None
         self._gameOverScore = -1
         self._gameOverInputSource = None
+        self._ecgStartTick = 0
         self._levelCompleteSurf = None
         self._levelCompleteScore = -1
         self._levelCompleteInputSource = None
@@ -312,128 +316,191 @@ class HUD:
 
         self._controlsSurf = bgSurf
 
+    @staticmethod
+    def _ecgSample(t: float) -> float:
+        t = t % 1.0
+        if t < 0.10:
+            return 0.15 * math.sin(math.pi * t / 0.10)
+        if t < 0.16:
+            return 0.0
+        if t < 0.20:
+            return -0.15 * math.sin(math.pi * (t - 0.16) / 0.04)
+        if t < 0.26:
+            return 1.0 * math.sin(math.pi * (t - 0.20) / 0.06)
+        if t < 0.30:
+            return -0.3 * math.sin(math.pi * (t - 0.26) / 0.04)
+        if t < 0.44:
+            return 0.2 * math.sin(math.pi * (t - 0.30) / 0.14)
+        return 0.0
+
+    def _drawEcg(self, screen: Surface, ecgX: int, ecgY: int, ecgW: int, ecgH: int) -> None:
+        elapsed = (pygame.time.get_ticks() - self._ecgStartTick) / 1000.0
+
+        sweepSpeed = 1.5
+        cyclePeriod = 0.8
+        cursorFrac = (elapsed % sweepSpeed) / sweepSpeed
+
+        midY = ecgY + ecgH // 2
+        amplitude = ecgH * 0.45
+        stepCount = max(2, ecgW)
+
+        points: list[tuple[int, int]] = []
+        for i in range(stepCount):
+            frac = i / (stepCount - 1)
+            worldTime = elapsed - (cursorFrac - frac) * sweepSpeed
+            y = self._ecgSample(worldTime / cyclePeriod)
+            px = ecgX + int(frac * ecgW)
+            py = int(midY - y * amplitude)
+            points.append((px, py))
+
+        gapStart = max(0, int(cursorFrac * stepCount))
+        gapEnd = min(stepCount, gapStart + max(1, stepCount // 12))
+
+        before = points[:gapStart]
+        after = points[gapEnd:]
+
+        if len(before) >= 2:
+            glowSurf = pygame.Surface((ecgW + self._s(10), ecgH + self._s(10)), pygame.SRCALPHA)
+            ox, oy = ecgX - self._s(5), ecgY - self._s(5)
+            shifted = [(x - ox, y - oy) for x, y in before]
+            pygame.draw.lines(glowSurf, (200, 20, 20, 80), False, shifted, max(1, self._s(4)))
+            screen.blit(glowSurf, (ox, oy))
+            pygame.draw.aalines(screen, (255, 40, 40), False, before)
+        if len(after) >= 2:
+            glowSurf = pygame.Surface((ecgW + self._s(10), ecgH + self._s(10)), pygame.SRCALPHA)
+            ox, oy = ecgX - self._s(5), ecgY - self._s(5)
+            shifted = [(x - ox, y - oy) for x, y in after]
+            pygame.draw.lines(glowSurf, (200, 20, 20, 80), False, shifted, max(1, self._s(4)))
+            screen.blit(glowSurf, (ox, oy))
+            pygame.draw.aalines(screen, (255, 40, 40), False, after)
+
+        tipX = ecgX + int(cursorFrac * ecgW)
+        tipY = points[min(gapStart, stepCount - 1)][1]
+        pygame.draw.circle(screen, (255, 100, 100), (tipX, tipY), self._s(4))
+        pygame.draw.circle(screen, (255, 200, 200), (tipX, tipY), self._s(2))
+
     def drawGameOver(self, screen: Surface, score: int) -> None:
         from entities.input.manager import InputSource, GameAction
         from entities.input.joybindings import JoyBindings
-        from pytablericons import OutlineIcon
 
         curSource = self.inputManager.lastInputSource
-        if (self._gameOverSurf is not None
-                and self._gameOverScore == score
-                and self._gameOverInputSource == curSource):
-            screen.blit(self._gameOverSurf, (0, 0))
-            return
+        bNeedRebuild = (self._gameOverSurf is None
+                        or self._gameOverScore != score
+                        or self._gameOverInputSource != curSource)
 
-        self._gameOverScore = score
-        self._gameOverInputSource = curSource
+        if bNeedRebuild:
+            self._gameOverScore = score
+            self._gameOverInputSource = curSource
+            self._ecgStartTick = pygame.time.get_ticks()
 
-        w, h = self.screenSize
-        self._gameOverSurf = pygame.Surface((w, h), pygame.SRCALPHA)
-        surf = self._gameOverSurf
-        surf.fill((0, 0, 0, 180))
+            w, h = self.screenSize
+            self._gameOverSurf = pygame.Surface((w, h), pygame.SRCALPHA)
+            surf = self._gameOverSurf
+            surf.fill((0, 0, 0, 180))
 
-        cx, cy = w // 2, h // 2
+            cx, cy = w // 2, h // 2
 
-        panelW, panelH = self._s(640), self._s(460)
-        cr = self._s(18)
-        panel = _gradientRect(panelW, panelH, (22, 24, 32), (10, 12, 18), 240, cr)
-        pygame.draw.rect(panel, (160, 30, 30, 180), (0, 0, panelW, panelH), self._s(2), border_radius=cr)
+            panelW, panelH = self._s(640), self._s(460)
+            cr = self._s(18)
+            panel = _gradientRect(panelW, panelH, (22, 24, 32), (10, 12, 18), 240, cr)
+            pygame.draw.rect(panel, (160, 30, 30, 180), (0, 0, panelW, panelH), self._s(2), border_radius=cr)
 
-        topAccentW = panelW - self._s(60)
-        if topAccentW > 0:
-            topAccent = _gradientRect(topAccentW, self._s(3), (200, 40, 40), (100, 15, 15), 200, 1)
-            panel.blit(topAccent, ((panelW - topAccentW) // 2, 0))
+            topAccentW = panelW - self._s(60)
+            if topAccentW > 0:
+                topAccent = _gradientRect(topAccentW, self._s(3), (200, 40, 40), (100, 15, 15), 200, 1)
+                panel.blit(topAccent, ((panelW - topAccentW) // 2, 0))
 
-        hlW = panelW - self._s(30)
-        if hlW > 0:
-            hl = pygame.Surface((hlW, 1), pygame.SRCALPHA)
-            hl.fill((255, 255, 255, 12))
-            panel.blit(hl, (self._s(15), self._s(4)))
+            hlW = panelW - self._s(30)
+            if hlW > 0:
+                hl = pygame.Surface((hlW, 1), pygame.SRCALPHA)
+                hl.fill((255, 255, 255, 12))
+                panel.blit(hl, (self._s(15), self._s(4)))
 
-        panelX, panelY = cx - panelW // 2, cy - panelH // 2
-        surf.blit(panel, (panelX, panelY))
+            panelX, panelY = cx - panelW // 2, cy - panelH // 2 - self._s(40)
+            surf.blit(panel, (panelX, panelY))
 
-        iconSize = self._s(72)
-        iconY = panelY + self._s(35)
-        iconSurf = tablerIcon(OutlineIcon.SKULL, iconSize, '#FF3232', 1.8)
+            titleY = panelY + self._s(45)
+            titleSurf = self.font.render(gameOver, True, (255, 55, 55))
+            titleRect = titleSurf.get_rect(center=(cx, titleY))
 
-        glowSize = iconSize + self._s(40)
-        iconGlow = pygame.Surface((glowSize, glowSize), pygame.SRCALPHA)
-        pygame.draw.circle(iconGlow, (180, 20, 20, 25), (glowSize // 2, glowSize // 2), glowSize // 2)
-        surf.blit(iconGlow, (cx - glowSize // 2, iconY + iconSize // 2 - glowSize // 2))
-        surf.blit(iconSurf, (cx - iconSize // 2, iconY))
+            maxGlow = self._s(12)
+            for offset in range(maxGlow, 0, -2):
+                glow = self.font.render(gameOver, True, (160, 0, 0))
+                glow.set_alpha(int(50 * (1 - offset / maxGlow)))
+                for dx, dy in [(-offset, 0), (offset, 0), (0, -offset), (0, offset),
+                               (-offset // 2, -offset // 2), (offset // 2, -offset // 2),
+                               (-offset // 2, offset // 2), (offset // 2, offset // 2)]:
+                    surf.blit(glow, titleSurf.get_rect(center=(cx + dx, titleY + dy)))
 
-        titleY = iconY + iconSize + self._s(30)
-        titleSurf = self.font.render(gameOver, True, (255, 55, 55))
-        titleRect = titleSurf.get_rect(center=(cx, titleY))
+            shadow = self.font.render(gameOver, True, (40, 0, 0))
+            surf.blit(shadow, titleSurf.get_rect(center=(cx + self._s(3), titleY + self._s(3))))
+            surf.blit(titleSurf, titleRect)
 
-        maxGlow = self._s(12)
-        for offset in range(maxGlow, 0, -2):
-            glow = self.font.render(gameOver, True, (160, 0, 0))
-            glow.set_alpha(int(50 * (1 - offset / maxGlow)))
-            for dx, dy in [(-offset, 0), (offset, 0), (0, -offset), (0, offset),
-                           (-offset // 2, -offset // 2), (offset // 2, -offset // 2),
-                           (-offset // 2, offset // 2), (offset // 2, offset // 2)]:
-                surf.blit(glow, titleSurf.get_rect(center=(cx + dx, titleY + dy)))
+            divY = titleY + titleSurf.get_height() // 2 + self._s(22)
+            divW = panelW - self._s(80)
+            if divW > 0:
+                divSurf = pygame.Surface((divW, self._s(1)), pygame.SRCALPHA)
+                halfW = divW // 2
+                for px in range(divW):
+                    dist = abs(px - halfW)
+                    a = max(0, int(40 * (1 - dist / halfW)))
+                    divSurf.set_at((px, 0), (255, 60, 60, a))
+                surf.blit(divSurf, (cx - divW // 2, divY))
 
-        shadow = self.font.render(gameOver, True, (40, 0, 0))
-        surf.blit(shadow, titleSurf.get_rect(center=(cx + self._s(3), titleY + self._s(3))))
-        surf.blit(titleSurf, titleRect)
+            scoreText = f"Score Final: {score}"
+            scoreSurf = self.scoreFont.render(scoreText, True, (220, 230, 255))
+            scoreY = divY + self._s(35)
 
-        divY = titleY + titleSurf.get_height() // 2 + self._s(22)
-        divW = panelW - self._s(80)
-        if divW > 0:
-            divSurf = pygame.Surface((divW, self._s(1)), pygame.SRCALPHA)
-            halfW = divW // 2
-            for px in range(divW):
-                dist = abs(px - halfW)
-                a = max(0, int(40 * (1 - dist / halfW)))
-                divSurf.set_at((px, 0), (255, 60, 60, a))
-            surf.blit(divSurf, (cx - divW // 2, divY))
+            pillW = scoreSurf.get_width() + self._s(50)
+            pillH = scoreSurf.get_height() + self._s(20)
+            pillCr = pillH // 2
+            pill = _gradientRect(pillW, pillH, (30, 28, 18), (18, 16, 10), 160, pillCr)
+            pygame.draw.rect(pill, (180, 150, 0, 80), (0, 0, pillW, pillH), 1, border_radius=pillCr)
+            surf.blit(pill, (cx - pillW // 2, scoreY - self._s(10)))
 
-        scoreText = f"Score Final: {score}"
-        scoreSurf = self.scoreFont.render(scoreText, True, (220, 230, 255))
-        scoreY = divY + self._s(35)
+            scoreShadow = self.scoreFont.render(scoreText, True, (30, 35, 50))
+            surf.blit(scoreShadow, scoreSurf.get_rect(center=(cx + self._s(2), scoreY + pillH // 2 - self._s(10) + self._s(2))))
+            surf.blit(scoreSurf, scoreSurf.get_rect(center=(cx, scoreY + pillH // 2 - self._s(10))))
 
-        pillW = scoreSurf.get_width() + self._s(50)
-        pillH = scoreSurf.get_height() + self._s(20)
-        pillCr = pillH // 2
-        pill = _gradientRect(pillW, pillH, (30, 28, 18), (18, 16, 10), 160, pillCr)
-        pygame.draw.rect(pill, (180, 150, 0, 80), (0, 0, pillW, pillH), 1, border_radius=pillCr)
-        surf.blit(pill, (cx - pillW // 2, scoreY - self._s(10)))
-
-        scoreShadow = self.scoreFont.render(scoreText, True, (30, 35, 50))
-        surf.blit(scoreShadow, scoreSurf.get_rect(center=(cx + self._s(2), scoreY + pillH // 2 - self._s(10) + self._s(2))))
-        surf.blit(scoreSurf, scoreSurf.get_rect(center=(cx, scoreY + pillH // 2 - self._s(10))))
-
-        restartKeyName = keyBindings.getKeyName(keyBindings.restart)
-        if curSource == InputSource.JOYSTICK:
-            restartBtn = JoyBindings().getButtonForAction(GameAction.RESTART)
-            if restartBtn is not None:
-                restartText = gameRestartButton.format(button=self.joyIcons.getButtonName(restartBtn))
+            restartKeyName = keyBindings.getKeyName(keyBindings.restart)
+            if curSource == InputSource.JOYSTICK:
+                restartBtn = JoyBindings().getButtonForAction(GameAction.RESTART)
+                if restartBtn is not None:
+                    restartText = gameRestartButton.format(button=self.joyIcons.getButtonName(restartBtn))
+                else:
+                    restartText = gameRestartKey.format(key=restartKeyName)
+                menuBtn = JoyBindings().getButtonForAction(GameAction.MENU_BACK)
+                if menuBtn is not None:
+                    menuText = gameOverMenuButton.format(button=self.joyIcons.getButtonName(menuBtn))
+                else:
+                    menuText = gameOverMenuKey
             else:
                 restartText = gameRestartKey.format(key=restartKeyName)
-            menuBtn = JoyBindings().getButtonForAction(GameAction.MENU_BACK)
-            if menuBtn is not None:
-                menuText = gameOverMenuButton.format(button=self.joyIcons.getButtonName(menuBtn))
-            else:
                 menuText = gameOverMenuKey
-        else:
-            restartText = gameRestartKey.format(key=restartKeyName)
-            menuText = gameOverMenuKey
 
-        actionsY = scoreY + pillH + self._s(20)
-        restartSurf = self.smallFont.render(restartText, True, (240, 240, 245))
-        restartRect = restartSurf.get_rect(center=(cx, actionsY))
-        restartShadow = self.smallFont.render(restartText, True, (0, 0, 0))
-        surf.blit(restartShadow, restartSurf.get_rect(center=(cx + 1, actionsY + 1)))
-        surf.blit(restartSurf, restartRect)
+            actionsY = scoreY + pillH + self._s(20)
+            restartSurf = self.smallFont.render(restartText, True, (240, 240, 245))
+            restartRect = restartSurf.get_rect(center=(cx, actionsY))
+            restartShadow = self.smallFont.render(restartText, True, (0, 0, 0))
+            surf.blit(restartShadow, restartSurf.get_rect(center=(cx + 1, actionsY + 1)))
+            surf.blit(restartSurf, restartRect)
 
-        menuSurf = self.smallFont.render(menuText, True, (130, 132, 150))
-        menuRect = menuSurf.get_rect(center=(cx, actionsY + self._s(40)))
-        surf.blit(menuSurf, menuRect)
+            menuSurf = self.smallFont.render(menuText, True, (130, 132, 150))
+            menuRect = menuSurf.get_rect(center=(cx, actionsY + self._s(40)))
+            surf.blit(menuSurf, menuRect)
 
-        screen.blit(self._gameOverSurf, (0, 0))
+        screen.blit(self._gameOverSurf, (0, 0))  # type: ignore[arg-type]
+
+        w, h = self.screenSize
+        cx, cy = w // 2, h // 2
+        panelW = self._s(640)
+        panelH = self._s(460)
+        panelY = cy - panelH // 2 - self._s(40)
+        ecgY = panelY + panelH + self._s(15)
+        ecgW = self._s(1000)
+        ecgH = self._s(180)
+        ecgX = cx - ecgW // 2
+        self._drawEcg(screen, ecgX, ecgY, ecgW, ecgH)
 
     def drawHitCounter(self, screen: Surface, hitCount: int, maxHits: int) -> None:
         if hitCount == self._cachedHits and maxHits == self._cachedMaxHits and self._cachedHitSurf is not None:
