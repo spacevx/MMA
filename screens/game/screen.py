@@ -54,6 +54,7 @@ class GameScreen:
         Obstacle.setDir(levelConfig.obstacleDir)
         self._loadBackground()
 
+        self.dt: float = 0.0
         self.scrollX: float = 0.0
         self.scrollSpeed: float = levelConfig.scrollSpeed
         self.groundY = int(height * self.groundRatio)
@@ -105,7 +106,8 @@ class GameScreen:
         self._eeMode: EasterEggMode = EasterEggMode.OFF
 
         self.hud = HUD(self.screenSize, bDoubleJump=levelConfig.bDoubleJump,
-                       bSlideEnabled=levelConfig.bSlideEnabled)
+                       bSlideEnabled=levelConfig.bSlideEnabled,
+                       bFallingCages=levelConfig.bFallingCages)
         self.spawner = ObstacleSpawner(
             self.screenSize, self.groundY, self.scrollSpeed,
             levelConfig.obstacleMinDelay, levelConfig.obstacleMaxDelay
@@ -268,6 +270,7 @@ class GameScreen:
         self.spawner.handleEvent(event, self.obstacles, self.bGameOver or self.bFinaleArmed)
 
     def update(self, dt: float) -> None:
+        self.dt = dt
         if self.bGameOver or self.bLevelComplete:
             return
 
@@ -447,7 +450,7 @@ class GameScreen:
                 continue
             cage.draw(screen)
 
-        self.hud.draw(screen, self.score, self.bGameOver, self.hitCount,
+        self.hud.draw(screen, self.score, self.bGameOver, self.dt, self.hitCount,
                       self.levelConfig.maxHits, self.bLevelComplete)
 
         if self._eeMode == EasterEggMode.MIRROR:

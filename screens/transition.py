@@ -1,4 +1,5 @@
 from enum import Enum, auto
+import math
 
 import pygame
 from pygame import Surface
@@ -10,8 +11,17 @@ class SlideDir(Enum):
     RIGHT = auto()
 
 
+class FadePhase(Enum):
+    OUT = auto()
+    IN = auto()
+
+
 def _easeOutCubic(t: float) -> float:
     return 1.0 - (1.0 - t) ** 3
+
+
+def _easeInOutSine(t: float) -> float:
+    return 0.5 * (1.0 - math.cos(math.pi * t))
 
 
 class ScreenTransition:
@@ -79,4 +89,63 @@ class ScreenTransition:
 
     def onResize(self, newSize: tuple[int, int]) -> None:
         self.screenSize = newSize
+        self.bActive = False
+
+
+class FadeTransition:
+    fadeOutDuration: float = 0.35
+    fadeInDuration: float = 0.35
+
+    def __init__(self, screenSize: tuple[int, int]) -> None:
+        self.screenSize = screenSize
+        self.bActive: bool = False
+        self.phase: FadePhase = FadePhase.OUT
+        self.elapsed: float = 0.0
+        self.alpha: int = 0
+        self.bMidpointFired: bool = False
+
+        self._overlay: Surface = Surface(screenSize)
+        self._overlay.fill((0, 0, 0))
+
+    def start(self) -> None:
+        self.bActive = True
+        self.phase = FadePhase.OUT
+        self.elapsed = 0.0
+        self.alpha = 0
+        self.bMidpointFired = False
+
+    def update(self, dt: float) -> bool:
+        if not self.bActive:
+            return False
+
+        self.elapsed += dt
+
+        if self.phase == FadePhase.OUT:
+            t = min(self.elapsed / self.fadeOutDuration, 1.0)
+            self.alpha = int(_easeInOutSine(t) * 255)
+            if t >= 1.0:
+                self.alpha = 255
+                self.bMidpointFired = True
+                self.phase = FadePhase.IN
+                self.elapsed = 0.0
+        else:
+            t = min(self.elapsed / self.fadeInDuration, 1.0)
+            self.alpha = int((1.0 - _easeInOutSine(t)) * 255)
+            if t >= 1.0:
+                self.alpha = 0
+                self.bActive = False
+                return True
+
+        return False
+
+    def draw(self, screen: Surface) -> None:
+        if not self.bActive:
+            return
+        self._overlay.set_alpha(self.alpha)
+        screen.blit(self._overlay, (0, 0))
+
+    def onResize(self, newSize: tuple[int, int]) -> None:
+        self.screenSize = newSize
+        self._overlay = Surface(newSize)
+        self._overlay.fill((0, 0, 0))
         self.bActive = False

@@ -16,10 +16,11 @@ class HUD:
     baseH: int = 1080
 
     def __init__(self, screenSize: ScreenSize, bDoubleJump: bool = False,
-                 bSlideEnabled: bool = True) -> None:
+                 bSlideEnabled: bool = True, bFallingCages: bool = True) -> None:
         self.screenSize = screenSize
         self.bDoubleJump = bDoubleJump
         self.bSlideEnabled = bSlideEnabled
+        self.bFallingCages = bFallingCages
         self.scale = min(screenSize[0] / self.baseW, screenSize[1] / self.baseH)
         self._createFonts()
 
@@ -27,6 +28,8 @@ class HUD:
         from entities.input.joyicons import JoyIcons
         self.inputManager = InputManager()
         self.joyIcons = JoyIcons()
+
+        self.displayScore: float = 0.0
 
         self._cachedScoreVal: int = -1
         self._cachedScoreSurf: Surface | None = None
@@ -58,18 +61,10 @@ class HUD:
         return panel
 
     def _drawHeart(self, surf: Surface, cx: int, cy: int, size: int,
-                   color: tuple[int, int, int]) -> None:
-        r = size // 4
-        tmp = pygame.Surface((size, size), pygame.SRCALPHA)
-        hx, hy = size // 2, size // 2
-        pygame.draw.circle(tmp, color, (hx - r, hy - r), r)
-        pygame.draw.circle(tmp, color, (hx + r, hy - r), r)
-        pygame.draw.polygon(tmp, color, [
-            (hx - size // 2 + 1, hy - r // 2),
-            (hx + size // 2 - 1, hy - r // 2),
-            (hx, hy + size // 2 - 1),
-        ])
-        surf.blit(tmp, (cx - size // 2, cy - size // 2))
+                   color: str) -> None:
+        from pytablericons import FilledIcon
+        icon = tablerIcon(FilledIcon.HEART, size, color)
+        surf.blit(icon, (cx - size // 2, cy - size // 2))
 
     def _createFonts(self) -> None:
         self.font: Font = pygame.font.Font(None, self._s(96))
@@ -100,6 +95,7 @@ class HUD:
         self._levelCompleteInputSource = None
 
     def resetGameOverCache(self) -> None:
+        self.displayScore = 0.0
         self._gameOverSurf = None
         self._gameOverScore = -1
         self._gameOverInputSource = None
@@ -123,7 +119,7 @@ class HUD:
         target.blit(shadow, (pos[0] + shadowOffset, pos[1] + shadowOffset))
         target.blit(surf, pos)
 
-    def drawScore(self, screen: Surface, score: int) -> None:
+    def drawScore(self, screen: Surface, score: int, dt: float) -> None:
         scoreX, scoreY = self._s(30), self._s(25)
 
         if self._cachedScoreBoxSurf is None:
@@ -133,9 +129,15 @@ class HUD:
 
         screen.blit(self._cachedScoreBoxSurf, (scoreX - self._s(10), scoreY - self._s(10)))
 
-        if score != self._cachedScoreVal:
-            self._cachedScoreVal = score
-            scoreText = f"Score: {score}"
+        t = min(1.0, 1.0 - 0.04 ** dt)
+        self.displayScore = pygame.math.lerp(self.displayScore, float(score), t)
+        if abs(self.displayScore - score) < 1.0:
+            self.displayScore = float(score)
+        shown = int(self.displayScore)
+
+        if shown != self._cachedScoreVal:
+            self._cachedScoreVal = shown
+            scoreText = f"Score: {shown}"
             boxW = self._cachedScoreBoxSurf.get_width()
             boxH = self._cachedScoreBoxSurf.get_height()
             self._cachedScoreSurf = pygame.Surface((boxW, boxH), pygame.SRCALPHA)
@@ -453,7 +455,7 @@ class HUD:
 
         for i in range(maxHits):
             cx = startX + i * spacing
-            color = (50, 52, 65) if i < hitCount else (220, 50, 50)
+            color = '#32343F' if i < hitCount else '#DC3232'
             self._drawHeart(hitSurf, cx, centerY, heartSize, color)
 
         self._cachedHitSurf = hitSurf
@@ -542,9 +544,10 @@ class HUD:
 
         screen.blit(self._levelCompleteSurf, (0, 0))
 
-    def draw(self, screen: Surface, score: int, bGameOver: bool, hitCount: int = 0, maxHits: int = 3, bLevelComplete: bool = False) -> None:
-        self.drawScore(screen, score)
-        self.drawHitCounter(screen, hitCount, maxHits)
+    def draw(self, screen: Surface, score: int, bGameOver: bool, dt: float, hitCount: int = 0, maxHits: int = 3, bLevelComplete: bool = False) -> None:
+        self.drawScore(screen, score, dt)
+        if self.bFallingCages:
+            self.drawHitCounter(screen, hitCount, maxHits)
         self.drawControls(screen)
         if bLevelComplete:
             self.drawLevelComplete(screen, score)
