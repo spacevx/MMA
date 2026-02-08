@@ -146,7 +146,7 @@ class FallingCage(BaseObstacle):
     def getHitbox(self) -> Rect:
         return self.rect.inflate(-30, -20)
 
-    def update(self, dt: float, playerX: int | None = None) -> None:  # type: ignore[override]
+    def update(self, dt: float, playerX: int | None = None) -> None:
         # The cage goes through differents states: hanging -> warning (shaking) -> falling -> grounded -> killed
         if self.state == CageState.TRAPPED:
             chainLen = self.rect.top
