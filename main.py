@@ -2,6 +2,10 @@
 # dependencies = ["pygame-ce"]
 # ///
 
+
+#EMSScripten = WASM, for the web version of the game
+# The async code is also for WASM, please don't remove that
+
 import sys
 import asyncio
 

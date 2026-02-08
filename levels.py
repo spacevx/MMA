@@ -4,6 +4,9 @@ from pathlib import Path
 from paths import assetsPath, screensPath
 
 
+# You can easily add new levels here, the level system was designed so we can add levels pretty quickly
+
+# Please, don't touch this
 @dataclass(frozen=True)
 class LevelConfig:
     levelId: int

@@ -5,10 +5,13 @@ import pygame
 
 from strings import windowTitle
 
+# Don't try to change the resolution, code not responsive
 width: Final[int] = 1280
 height: Final[int] = 720
 minWidth: Final[int] = 640
 minHeight: Final[int] = 480
+
+# TODO: Add a option in UI so we change the fps limit
 fps: Final[int] = 60
 
 title: Final[str] = windowTitle
@@ -27,6 +30,7 @@ darkGray: Final[Color] = (25, 25, 30)
 darkGrayLight: Final[Color] = (40, 40, 50)
 
 
+# State for knowing in which interface we are
 class GameState(Enum):
     MENU = auto()
     LEVEL_SELECT = auto()
@@ -67,6 +71,7 @@ def lastUnlockedLevel() -> int:
     unlocked = [k for k, v in levelUnlocked.items() if v]
     return max(unlocked) if unlocked else 1
 
+# Controller data
 JOY_DEADZONE: Final[float] = 0.3
 JOY_AXIS_THRESHOLD: Final[float] = 0.5
 DEFAULT_JOY_JUMP: Final[int] = 0

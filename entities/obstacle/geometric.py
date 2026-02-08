@@ -9,6 +9,11 @@ from .base import BaseObstacle
 from paths import assetsPath
 
 
+# We are using gfxfraw for drawing obstacles, since it have some cool features like anti-aliasing (see: https://www.pygame.org/docs/ref/gfxdraw.html)
+
+
+# The geometric obstacles from level 3 (Geometry Dash like)
+# There is triangles, squares and hexagons, they all rotate and you can destroy them with the laser
 class GeometricObstacle(BaseObstacle):
     _cache: dict[tuple[str, int, tuple[int, int, int]], Surface] = {}
     rotationSpeed: float = 90.0
@@ -41,6 +46,7 @@ class GeometricObstacle(BaseObstacle):
 
     @classmethod
     def _renderShape(cls, shape: str, size: int, color: tuple[int, int, int]) -> Surface:
+        # Drawing the shape with a white outline, using gfxdraw for anti-aliasing
         surf = pygame.Surface((size * 2, size * 2), pygame.SRCALPHA)
         cx, cy = size, size
         white = (255, 255, 255)
@@ -73,10 +79,13 @@ class GeometricObstacle(BaseObstacle):
         return self.rect.inflate(-10, -10)
 
     def takeDamage(self, damage: int = 1) -> bool:
+        # Returns True if the obstacle is destroyed
         self.health -= damage
         return self.health <= 0
 
 
+# Easter egg: when you spam SPACE too much, the geometric obstacles transforms into Epstein's head
+# It spins faster than the regular ones
 class HeadObstacle(GeometricObstacle):
     _headCache: Surface | None = None
     rotationSpeed: float = 120.0
@@ -107,6 +116,7 @@ class HeadObstacle(GeometricObstacle):
         return pygame.transform.smoothscale(raw, (targetW, targetH))
 
     def update(self, dt: float) -> None:
+        # We have to re-rotate the original image every frame because rotating a already rotated image is losing quality
         BaseObstacle.update(self, dt)
         self.rotation += self.rotationSpeed * dt
         if self.rotation >= 360:

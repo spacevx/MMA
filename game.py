@@ -261,6 +261,7 @@ class Game:
 
         pygame.display.flip()
 
+    # Used for updating the action on discord
     async def _updateDiscordRpc(self, dt: float) -> None:
         self.rpcUpdateTimer += dt
         if self.rpcUpdateTimer < self.rpcUpdateInterval:

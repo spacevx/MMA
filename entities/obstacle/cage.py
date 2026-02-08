@@ -12,14 +12,18 @@ cageFallSoundPath = assetsPath / "songs" / "metal3.ogg"
 _cageFallSound: pygame.mixer.Sound | None = None
 
 
+# The differents states of a cage
 class CageState(Enum):
-    HANGING = auto()
-    WARNING = auto()
-    FALLING = auto()
-    GROUNDED = auto()
-    TRAPPED = auto()
+    HANGING = auto()    # attached to the ceiling, waiting
+    WARNING = auto()    # shaking, about to fall
+    FALLING = auto()    # falling down
+    GROUNDED = auto()   # on the ground, will disappear after a delay
+    TRAPPED = auto()    # trapping the chaser (finale)
 
 
+# The cage that falls from the ceiling when the player gets close
+# There is a chain that connects the cage to the top of the screen
+# The cage and chain images are cached so we don't recreate them every time
 class FallingCage(BaseObstacle):
     _cageCache: Surface | None = None
     _chainCache: dict[int, Surface] = {}
@@ -70,6 +74,8 @@ class FallingCage(BaseObstacle):
 
     @classmethod
     def _createCageSurface(cls) -> Surface:
+        # Drawing the cage with bars, there is a top frame, bottom frame and vertical bars
+        # Each bar has a highlight on the left and a shadow on the right
         w, h = cls.cageWidth, cls.cageHeight
         surface = pygame.Surface((w, h), pygame.SRCALPHA)
 
@@ -81,13 +87,16 @@ class FallingCage(BaseObstacle):
         spacing = 20
         frameH = 15
 
+        # Top frame
         pygame.draw.rect(surface, metal, (0, 0, w, frameH))
         pygame.draw.rect(surface, darkMetal, (0, 0, w, frameH), 3)
         pygame.draw.line(surface, highlight, (5, 3), (w - 5, 3), 2)
 
+        # Bottom frame
         pygame.draw.rect(surface, metal, (0, h - frameH, w, frameH))
         pygame.draw.rect(surface, darkMetal, (0, h - frameH, w, frameH), 3)
 
+        # Vertical bars
         for xPos in range(spacing, w - spacing // 2, spacing):
             pygame.draw.rect(surface, metal, (xPos - barW // 2, frameH, barW, h - frameH * 2))
             pygame.draw.line(surface, highlight, (xPos - barW // 2 + 1, frameH + 5),
@@ -95,6 +104,7 @@ class FallingCage(BaseObstacle):
             pygame.draw.line(surface, darkMetal, (xPos + barW // 2 - 1, frameH + 5),
                            (xPos + barW // 2 - 1, h - frameH - 5), 2)
 
+        # Left and right side bars
         pygame.draw.rect(surface, metal, (0, frameH, barW, h - frameH * 2))
         pygame.draw.rect(surface, metal, (w - barW, frameH, barW, h - frameH * 2))
 
@@ -102,6 +112,7 @@ class FallingCage(BaseObstacle):
 
     @classmethod
     def _createChainSurface(cls, height: int) -> Surface:
+        # Drawing the chain links, it's just ellipses stacked on top of each other
         w = cls.chainWidth * 3
         surface = pygame.Surface((w, max(1, height)), pygame.SRCALPHA)
 
@@ -119,11 +130,13 @@ class FallingCage(BaseObstacle):
         return surface
 
     def triggerFall(self) -> None:
+        # Start the warning phase (shaking) before falling
         if self.state == CageState.HANGING:
             self.state = CageState.WARNING
             self.warningTimer = self.warningDuration
 
     def trapPlayer(self, playerX: int) -> None:
+        # Used for the finale, the cage traps the chaser and stops moving
         self.state = CageState.TRAPPED
         self.speed = 0
         self.rect.centerx = playerX
@@ -133,7 +146,8 @@ class FallingCage(BaseObstacle):
     def getHitbox(self) -> Rect:
         return self.rect.inflate(-30, -20)
 
-    def update(self, dt: float, playerX: int | None = None) -> None:
+    def update(self, dt: float, playerX: int | None = None) -> None:  # type: ignore[override]
+        # The cage goes through differents states: hanging -> warning (shaking) -> falling -> grounded -> killed
         if self.state == CageState.TRAPPED:
             chainLen = self.rect.top
             if chainLen > 0 and chainLen != self.chainImage.get_height():
@@ -151,6 +165,7 @@ class FallingCage(BaseObstacle):
                     self.triggerFall()
 
         elif self.state == CageState.WARNING:
+            # Shaking the cage left and right before it falls
             self.warningTimer -= dt
             self.shakeOffset = (pygame.time.get_ticks() % 100 - 50) * 0.1
             if self.warningTimer <= 0:
@@ -158,6 +173,7 @@ class FallingCage(BaseObstacle):
                 self.fallVelocity = 200.0
 
         elif self.state == CageState.FALLING:
+            # Accelerating downward until it hits the ground
             self.fallVelocity += 2000.0 * dt
             self.fallVelocity = min(self.fallVelocity, self.fallSpeed)
             self.rect.y += int(self.fallVelocity * dt)
@@ -189,6 +205,7 @@ class FallingCage(BaseObstacle):
             self.kill()
 
     def draw(self, surface: Surface) -> None:
+        # Drawing the chain first then the cage on top, if it's warning we add the shake offset
         if self.chainImage.get_height() > 1:
             surface.blit(self.chainImage, self.chainRect)
 

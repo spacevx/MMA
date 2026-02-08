@@ -7,12 +7,15 @@ from pygame import Surface
 from pygame.sprite import Sprite
 
 
+# A single frame, it's just a surface + how long it should be displayed for
 class AnimationFrame:
     def __init__(self, surface: Surface, delay: float) -> None:
         self.surface: Surface = surface
         self.delay: float = delay
 
 
+# Base class for all the animated entities (player, chaser, etc.)
+# It handles the frame cycling automatically, you just have to call updateAnimation(dt)
 class AnimatedSprite(Sprite):
     def __init__(self, x: int, y: int, frames: list[AnimationFrame]) -> None:
         super().__init__()
@@ -26,6 +29,7 @@ class AnimatedSprite(Sprite):
         return self.frames[self.frameIdx].surface
 
     def updateAnimation(self, dt: float) -> bool:
+        # Accumulating time and advancing frames, it can skip multiples frames if dt is large
         self.animTimer += dt
         bAdvanced = False
         while self.animTimer >= self.frames[self.frameIdx].delay:
@@ -35,6 +39,9 @@ class AnimatedSprite(Sprite):
         return bAdvanced
 
 
+# Loading animation frames from a folder of .gif files
+# The filename is encoding the frame index and the delay (e.g. frame_0_delay-0.1s.gif)
+# You can scale them or slice to only load a portion of the animation
 def loadFrames(path: Path, pattern: str = r"frame_(\d+)_delay-([\d.]+)s\.gif", scale: float = 1.0, targetHeight: Optional[int] = None, frameSlice: slice | None = None) -> list[AnimationFrame]:
     regex = re.compile(pattern)
     frames: list[AnimationFrame] = []

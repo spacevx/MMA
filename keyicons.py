@@ -8,6 +8,8 @@ keysPath = assetsPath / "tiles" / "keyboard"
 _cache: dict[str, Surface] = {}
 _scaledCache: dict[tuple[str, int], Surface] = {}
 
+
+# There is no automatic way to do this so i had to do it :/
 _NAME_MAP: dict[int, str] = {
     pygame.K_a: "a", pygame.K_b: "b", pygame.K_c: "c", pygame.K_d: "d", pygame.K_e: "e",
     pygame.K_f: "f", pygame.K_g: "g", pygame.K_h: "h", pygame.K_i: "i", pygame.K_j: "j",
@@ -46,6 +48,7 @@ _NAME_MAP: dict[int, str] = {
 }
 
 
+# Loading key icons in assets/tiles/keyboard
 def _loadIcon(name: str) -> Surface | None:
     if name in _cache:
         return _cache[name]

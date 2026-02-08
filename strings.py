@@ -1,3 +1,5 @@
+# All strings here
+
 from typing import Final
 
 windowTitle: Final[str] = "BSD Runner"

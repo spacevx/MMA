@@ -6,6 +6,7 @@ from pygame import Surface
 from pygame.math import Vector2
 
 
+# Our laser particle, it's just a small glowing dot that drifts away
 class LaserParticle:
     __slots__ = ("pos", "vel", "life", "maxLife", "radius")
 
@@ -18,7 +19,7 @@ class LaserParticle:
 
     def update(self, dt: float) -> bool:
         self.pos += self.vel * dt
-        self.vel *= 0.92
+        self.vel *= 0.92  # drag
         self.life -= dt
         return self.life > 0
 
@@ -38,7 +39,7 @@ class LaserBeam:
         self.bActive = True
         self.age: float = 0.0
         self.beamLength = self.start.distance_to(self.end)
-        self.bHitSomething = endX < startX + 780
+        self.bHitSomething = endX < startX + 780  # if the beam didn't go full range, it hit something
 
         self.particles: list[LaserParticle] = []
         self.impactParticles: list[LaserParticle] = []
@@ -47,6 +48,7 @@ class LaserBeam:
             self._spawnImpactParticles()
 
     def _spawnBeamParticles(self) -> None:
+        # Spawning particles randomly along the beam, with a small offset so it looks like they're flying off
         direction = (self.end - self.start)
         if direction.length_squared() < 1:
             return
@@ -54,7 +56,7 @@ class LaserBeam:
         perp = Vector2(-direction.y, direction.x)
 
         for _ in range(self.particleCount):
-            t = random.random()
+            t = random.random()  # where on the beam (0 = start, 1 = end)
             basePos = self.start.lerp(self.end, t)
             offset = perp * random.uniform(-6, 6)
             pos = basePos + offset
@@ -69,6 +71,7 @@ class LaserBeam:
             self.particles.append(LaserParticle(pos, vel, life, radius))
 
     def _spawnImpactParticles(self) -> None:
+        # Sparks that fly backward from where the laser hit, it's giving a impact feel
         for _ in range(self.impactParticleCount):
             speed = random.uniform(60, 200)
             angle = random.uniform(math.pi * 0.3, math.pi * 1.7)
@@ -92,20 +95,22 @@ class LaserBeam:
         return not self.bActive and not self.particles and not self.impactParticles
 
     def _beamColor(self, t: float, layer: int) -> tuple[int, int, int, int]:
+        # There is 4 layers, from the outer red glow to the bright core
+        # pulse is for the flicker effect
         pulse = 0.5 + 0.5 * math.sin(self.age * 60.0)
         alphaBase = int(255 * t)
 
-        if layer == 0:
+        if layer == 0:  # outer glow, dark red
             r = int(255 * (0.7 + 0.3 * pulse))
             return (r, 20, 0, min(50, alphaBase // 4))
-        elif layer == 1:
+        elif layer == 1:  # orange-red
             g = int(40 + 40 * pulse)
             return (255, g, 10, min(100, alphaBase // 3))
-        elif layer == 2:
+        elif layer == 2:  # orange
             g = int(80 + 50 * pulse)
             b = int(30 + 30 * pulse)
             return (255, g, b, min(150, alphaBase // 2))
-        else:
+        else:  # the bright core
             g = int(180 + 60 * pulse)
             b = int(150 + 80 * pulse)
             return (255, g, b, alphaBase)
@@ -117,9 +122,10 @@ class LaserBeam:
         if not self.bActive and not self.particles and not self.impactParticles:
             return
 
-        t = max(self.timer / self.duration, 0.0)
+        t = max(self.timer / self.duration, 0.0)  # remaining life 1.0 -> 0.0
 
         if self.bActive and t > 0.01:
+            # Drawing the beam, there is 4 layers on top of each other
             layerWidths = [22, 14, 9, 4]
             for layer in range(4):
                 color = self._beamColor(t, layer)
@@ -136,6 +142,7 @@ class LaserBeam:
         self._drawParticles(screen, self.impactParticles, t, bImpact=True)
 
     def _drawMuzzleFlash(self, screen: Surface, t: float) -> None:
+        # Small pulsing glow where the laser starts (player's hand)
         pulse = 0.6 + 0.4 * math.sin(self.age * 80.0)
         radius = int(12 * t * pulse)
         if radius < 2:
@@ -151,6 +158,7 @@ class LaserBeam:
         screen.blit(coreSurf, (int(self.start.x) - coreR, int(self.start.y) - coreR))
 
     def _drawImpactFlash(self, screen: Surface, t: float) -> None:
+        # Drawing a flash where the laser hits, there is 3 layers (glow, flash, core)
         pulse = 0.5 + 0.5 * math.sin(self.age * 70.0)
         baseRadius = int(18 * t * pulse)
         if baseRadius < 2:
@@ -174,6 +182,7 @@ class LaserBeam:
 
     def _drawParticles(self, screen: Surface, particles: list[LaserParticle],
                        t: float, *, bImpact: bool) -> None:
+        # Impact particles are more orange, beam ones are more red
         for p in particles:
             frac = p.life / p.maxLife
             alpha = int(255 * frac * max(t, 0.3))

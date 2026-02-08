@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     from entities.input.manager import GameAction
 
 
+# This class was made so we can change/add easily new controls, without hardcoding keys in the game logic
 class KeyBindings:
     _instance: "KeyBindings | None" = None
 
@@ -39,6 +40,8 @@ class KeyBindings:
     def getActionForKey(self, key: int) -> "GameAction | None":
         from entities.input.manager import GameAction
 
+
+        # TODO: Clean this conditional branching
         if key == self.jump:
             return GameAction.JUMP
         elif key == self.slide:
