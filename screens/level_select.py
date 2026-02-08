@@ -13,8 +13,8 @@ from settings import GameState, ScreenSize, lastCompletedLevel
 from levels import levelConfigs
 from strings import levelSelectTitle, levelTarget, optionsBack
 from screens.menu_bg import MenuBackground
-from pytablericons import OutlineIcon  # type: ignore[import-untyped]
 from screens.ui import Button, tablerIcon, drawGlowTitle
+from screens.ui.primitives import OutlineIcon
 from screens.ui.levelcard import buildLevelCard
 
 _goldColor = (255, 215, 0)

@@ -1,9 +1,21 @@
+# /// script
+# dependencies = ["pygame-ce"]
+# ///
+
+import sys
 import asyncio
-import flags
-from game import Game
+
+if sys.platform == "emscripten":
+    sys.path.insert(0, "/data/data/mma/assets")
+else:
+    import os
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 
 async def main() -> None:
+    import flags
+    from game import Game
+
     flags.parse()
 
     game = Game()

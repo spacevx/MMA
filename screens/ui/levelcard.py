@@ -30,7 +30,7 @@ def buildLevelCard(
     numberFont: Font, nameFont: Font, infoFont: Font,
     scale: float, targetLabel: str,
 ) -> Surface:
-    from pytablericons import OutlineIcon, FilledIcon  # type: ignore[import-untyped]
+    from screens.ui.primitives import OutlineIcon, FilledIcon
 
     def _s(val: int) -> int:
         return max(1, int(val * scale))

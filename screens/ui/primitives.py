@@ -1,23 +1,58 @@
 from __future__ import annotations
 
+import sys
 import pygame
 from pygame import Surface
 from pygame.font import Font
-from pytablericons import TablerIcons, OutlineIcon, FilledIcon  # type: ignore[import-untyped]
+from typing import Any
 
-_iconCache: dict[tuple[OutlineIcon | FilledIcon, int, str, float], Surface] = {}
+_BROWSER: bool = sys.platform == "emscripten"
+
+if _BROWSER:
+    from enum import Enum
+
+    class OutlineIcon(Enum):
+        CHEVRON_LEFT = "chevron_left"
+        CHEVRON_RIGHT = "chevron_right"
+        LOCK = "lock"
+        PLAYER_PLAY = "player_play"
+
+    class FilledIcon(Enum):
+        HEART = "heart"
+        CIRCLE_CHECK = "circle_check"
+
+    _TablerIcons: Any = None
+else:
+    from pytablericons import TablerIcons as _TablerIcons, OutlineIcon, FilledIcon  # type: ignore[import-untyped,no-redef]
+
+_iconCache: dict[tuple[Any, ...], Surface] = {}
 
 
 def tablerIcon(icon: OutlineIcon | FilledIcon, size: int = 32, color: str = '#FFFFFF', strokeWidth: float = 2.0) -> Surface:
     key = (icon, size, color, strokeWidth)
     if key in _iconCache:
         return _iconCache[key]
-    pil = TablerIcons.load(icon, size=size, color=color, stroke_width=strokeWidth)
+
+    if _BROWSER:
+        surf = Surface((size, size), pygame.SRCALPHA)
+        r, g, b = _parseColor(color)
+        pygame.draw.circle(surf, (r, g, b), (size // 2, size // 2), size // 3)
+        _iconCache[key] = surf
+        return surf
+
+    pil = _TablerIcons.load(icon, size=size, color=color, stroke_width=strokeWidth)
     surf = pygame.image.frombuffer(pil.tobytes(), pil.size, pil.mode)
     if pil.mode == 'RGBA':
         surf = surf.convert_alpha()
     _iconCache[key] = surf
     return surf
+
+
+def _parseColor(color: str) -> tuple[int, int, int]:
+    c = color.lstrip('#')
+    if len(c) == 6:
+        return int(c[0:2], 16), int(c[2:4], 16), int(c[4:6], 16)
+    return (255, 255, 255)
 
 
 def _gradientRect(w: int, h: int, top: tuple[int, int, int], bot: tuple[int, int, int], alpha: int, cr: int) -> Surface:
