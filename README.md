@@ -116,10 +116,23 @@ mma/
   tools/                # Useful tools
 ```
 
+## WASM (Play in Browser)
+
+The game can be played directly in the browser via [GitHub Pages](https://spacevx.github.io/bsd-runner/) using [pygbag](https://github.com/pygame-web/pygbag). A new web build is deployed automatically on each release.
+
+Differences with the desktop version:
+- All levels are unlocked by default
+- Discord Rich Presence is disabled
+- Settings are not persisted between sessions
+- Icons are simplified (no pytablericons in WASM)
+
+To build locally: `pygbag .` then open `http://localhost:8000`
+
 ## CI/CD
 
 - **mypy.yml**: Type checking on every push/PR (just like a tsconfig.json)
 - **release.yml**: Auto builds Windows executable and creates a release when the version in `pyproject.toml` changes
+- **pages.yml**: Deploys the WASM web build to GitHub Pages on each release
 
 
 ## Code Style

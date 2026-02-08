@@ -428,6 +428,12 @@ class GameScreen:
         if not self.bFinaleArmed and self.score >= self.levelConfig.finaleScore and self.chaser:
             self.bFinaleArmed = True
             pygame.time.set_timer(obstacleSpawnEvent, 0)
+            if not self.ceilingTilemap:
+                cageX = self.localPlayer.rect.centerx + self._s(400)
+                cage = FallingCage(cageX, 0, self.groundY, self.scrollSpeed)
+                cage.speed = 0
+                self.fallingCages.add(cage)
+                self.finaleCage = cage
 
         if self.finaleCage and not self.bChaserTrapped and self.chaser:
             if self.finaleCage.state in (CageState.FALLING, CageState.GROUNDED):

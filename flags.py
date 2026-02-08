@@ -14,6 +14,7 @@ def parse(args: list[str] | None = None) -> None:
 
     if _BROWSER:
         bDisableChaser = False
+        bUnlockAllLevels = True
         return
 
     from argparse import ArgumentParser
