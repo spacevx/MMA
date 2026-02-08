@@ -127,3 +127,4 @@ mma/
 - Typed code, please run mpy . before pushing code to main
 - All UI strings are located in `strings.py`
 - The player is referenced as the `local player` so localPlayer = Player
+- `_` prefix for private methods (`_toggleFullscreen`, `_createBackButton` for example)
