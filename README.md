@@ -40,12 +40,7 @@ python main.py
 
 ### Dependencies
 
-| Package | What its for |
-|---------|---------|
-| pygame-ce | Game engine |
-| Pillow | Used for GIF Tool |
-| pytablericons | Icons library |
-| pypresence | Discord Rich Presence |
+pygame-ce, Pillow, pytablericons, pypresence
 
 ## Commands
 
@@ -62,10 +57,10 @@ pyinstaller build.spec
 
 ## Flags
 
-| Flag | What it does |
-|------|-------------|
-| `--disableChaser` | Run the game without the chaser enemy |
-| `--unlockAllLevels` | Unlock all levels |
+**Note**: All those flags were used during our dev period to facilitate the work
+
+- `--disableChaser` - Run the game without the chaser enemy
+- `--unlockAllLevels` - Unlock all levels
 
 Usage: `python main.py --disableChaser --unlockAllLevels` (you can combine them)
 
@@ -78,9 +73,17 @@ To add a new flag, go to `flags.py`, add a new `bool` variable (prefixed with `b
 
 ## Easter Eggs
 
-**Levels 1 & 2**: Do the combo JUMP, JUMP + SLIDE (hold both together), SLIDE and it will activate a random visual effect, the two existing ones are inverted colors and mirrored screen.
+**Levels 1 & 2**: Do the combo JUMP, JUMP + SLIDE (hold both together), SLIDE and it will activate a random visual effect, the two existing ones are inverted colors and mirrored screen
 
-**Level 3**: If you press SPACE 5+ times in less than 10 seconds, the geometric obstacles will transform into rotating heads.
+**Level 3**: If you press SPACE more than 5 times  in less than 10 seconds, the geometric obstacles will transform into Jeffrey Epstein
+
+## Discord Rich Presence
+
+The game has a Discord Rich Presence, it changes depending on what you're doing
+
+| Menu | Playing | Game Over |
+|------|---------|-----------|
+| ![Menu](assets/github/discord_principal_menu.png) | ![Playing](assets/github/discord_playing.png) | ![Game Over](assets/github/discord_gameover.png) |
 
 ## Architecture
 
@@ -120,6 +123,6 @@ mma/
 
 ## Code Style
 - camelCase for variables, `b` prefix for booleans (`bGameOver`, `bDoubleJump`)
-- Typed code
+- Typed code, please run mpy . before pushing code to main
 - All UI strings are located in `strings.py`
 - The player is referenced as the `local player` so localPlayer = Player
